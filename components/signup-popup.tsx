@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import * as React from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,17 +20,17 @@ interface SignupPopupProps {
 }
 
 export function SignupPopup({ isOpen, onClose, onSignupSuccess, onOpenLogin }: SignupPopupProps) {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [name, setName] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("register")
+  const [email, setEmail] = React.useState("")
+  const [password, setPassword] = React.useState("")
+  const [name, setName] = React.useState("")
+  const [isLoading, setIsLoading] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+  const [activeTab, setActiveTab] = React.useState("register")
   const { toast } = useToast()
   const { signUp, signIn, user } = useAuth()
   const router = useRouter()
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
     setIsLoading(true)
@@ -62,6 +62,7 @@ export function SignupPopup({ isOpen, onClose, onSignupSuccess, onOpenLogin }: S
         if (premiumError) throw premiumError
 
         onClose()
+        router.push("/profil/skapa-cv")
         onSignupSuccess()
       }
     } catch (error) {
@@ -71,7 +72,7 @@ export function SignupPopup({ isOpen, onClose, onSignupSuccess, onOpenLogin }: S
     }
   }
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
     setIsLoading(true)
@@ -95,7 +96,8 @@ export function SignupPopup({ isOpen, onClose, onSignupSuccess, onOpenLogin }: S
     }
   }
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
