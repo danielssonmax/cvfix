@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useForm } from "react-hook-form"
 import ResumeEditor from "@/components/resume-editor"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,8 @@ import CapturePayment from "@/components/capture-payment"
 import { SignupPopup } from "@/components/signup-popup"
 import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
+import { supabase } from "@/lib/supabase"
+import { useSearchParams } from "next/navigation"
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -29,9 +31,10 @@ const isPasswordValid = (password: string): boolean => {
   return password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers && hasNonalphas
 }
 
-export default function CVMallClient({ searchParams }: { searchParams: { template?: string } }) {
+export default function CVMallClient() {
+  const searchParams = useSearchParams()
   const { user, signIn, signUp } = useAuth()
-  const [selectedTemplate, setSelectedTemplate] = useState(searchParams.template || "default")
+  const [selectedTemplate, setSelectedTemplate] = useState(searchParams.get('template') || "default")
   const [isDownloading, setIsDownloading] = useState(false)
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
@@ -39,9 +42,16 @@ export default function CVMallClient({ searchParams }: { searchParams: { templat
   const [isLoadingPayment, setIsLoadingPayment] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [showSignupPopup, setShowSignupPopup] = useState(false)
+  const [popupMode, setPopupMode] = useState<"signup" | "login">("signup")
+  const [isLoginOpen, setIsLoginOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isDataLoaded, setIsDataLoaded] = useState(false)
+  const [lastLoadedId, setLastLoadedId] = useState<string | null>(null)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [isLoadingCV, setIsLoadingCV] = useState(false)
 
   // Use react-hook-form
-  const { control, handleSubmit, watch } = useForm({
+  const form = useForm({
     defaultValues: {
       personalInfo: {
         firstName: "",
@@ -49,22 +59,194 @@ export default function CVMallClient({ searchParams }: { searchParams: { templat
         email: "",
         summary: "",
       },
+      workExperience: [],
+      education: [],
+      skills: [],
+      languages: [],
+      certifications: [],
+      projects: [],
+      references: [],
       password: "",
     },
   })
 
-  const formData = watch()
+  const { control, handleSubmit, watch, reset, getValues } = form
+
+  // Watch all form fields
+  const formData = watch([
+    'personalInfo.firstName',
+    'personalInfo.lastName',
+    'personalInfo.email',
+    'personalInfo.summary',
+    'workExperience',
+    'education',
+    'skills',
+    'languages',
+    'certifications',
+    'projects',
+    'references'
+  ])
+
+  // Add a ref to track if we've already loaded the data
+  const hasLoadedData = useRef(false)
+
+  const loadCVData = useCallback(async () => {
+    const editId = searchParams.get('edit')
+    if (!editId || !user || (editId === lastLoadedId && !isInitialLoad) || isLoadingCV) return
+
+    setIsLoadingCV(true)
+    setIsLoading(true)
+    try {
+      console.log("Loading CV data for ID:", editId)
+      const { data, error } = await supabase
+        .from('cvs')
+        .select('*')
+        .eq('id', editId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (error) {
+        console.error("Error loading CV data:", error)
+        throw error
+      }
+
+      if (data?.data) {
+        console.log("Loaded CV data:", data)
+        console.log("Loaded CV data.data:", data.data)
+        
+        // Ensure we have all required fields in the loaded data
+        const loadedData = {
+          personalInfo: {
+            firstName: data.data.personalInfo?.firstName || "",
+            lastName: data.data.personalInfo?.lastName || "",
+            email: data.data.personalInfo?.email || "",
+            summary: data.data.personalInfo?.summary || "",
+          },
+          workExperience: data.data.workExperience || [],
+          education: data.data.education || [],
+          skills: data.data.skills || [],
+          languages: data.data.languages || [],
+          certifications: data.data.certifications || [],
+          projects: data.data.projects || [],
+          references: data.data.references || [],
+        }
+        
+        console.log("Resetting form with data:", loadedData)
+        console.log("Resetting form with personalInfo:", loadedData.personalInfo)
+        
+        // Reset the form with the loaded data
+        reset(loadedData)
+        setLastLoadedId(editId)
+        setIsInitialLoad(false)
+      } else {
+        console.log("No CV data found for ID:", editId)
+      }
+    } catch (error) {
+      console.error('Error loading CV data:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load CV data. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+      setIsLoadingCV(false)
+    }
+  }, [searchParams, user, reset, lastLoadedId, isInitialLoad, isLoadingCV])
+
+  // Load CV data on mount and when dependencies change
+  useEffect(() => {
+    loadCVData()
+  }, [loadCVData])
+
+  // Reset states when user changes
+  useEffect(() => {
+    setLastLoadedId(null)
+    setIsInitialLoad(true)
+    setIsLoadingCV(false)
+  }, [user])
 
   useEffect(() => {
     const fetchSubscriptionStatus = async () => {
-      if (user) {
-        try {
-          const status = await checkSubscriptionStatus(user.id)
-          setIsSubscribed(status.isSubscribed)
-        } catch (error) {
-          console.error("Error checking subscription status:", error)
-          setIsSubscribed(false)
+      if (!user) {
+        console.log("No user found, skipping subscription check")
+        setIsSubscribed(false)
+        return
+      }
+
+      try {
+        console.log("Starting subscription check for user:", user.id)
+        
+        // First check if user exists in premium table
+        const { data: userExists, error: checkError } = await supabase
+          .from("premium")
+          .select("*")
+          .eq("uid", user.id)
+          .maybeSingle()
+
+        if (checkError) {
+          console.error("Error checking user existence:", {
+            message: checkError.message,
+            code: checkError.code,
+            details: checkError.details,
+            hint: checkError.hint
+          })
+          throw checkError
         }
+
+        if (!userExists) {
+          console.log("User not found in premium table, creating record")
+          const { error: insertError } = await supabase
+            .from("premium")
+            .insert([
+              {
+                uid: user.id,
+                email: user.email,
+                premium: false
+              }
+            ])
+          
+          if (insertError) {
+            console.error("Error creating premium record:", {
+              message: insertError.message,
+              code: insertError.code,
+              details: insertError.details,
+              hint: insertError.hint
+            })
+            throw insertError
+          }
+          
+          setIsSubscribed(false)
+          return
+        }
+
+        // If user exists, get their premium status
+        const { data: premiumData, error: premiumError } = await supabase
+          .from("premium")
+          .select("premium")
+          .eq("uid", user.id)
+          .single()
+
+        if (premiumError) {
+          console.error("Error fetching premium status:", {
+            message: premiumError.message,
+            code: premiumError.code,
+            details: premiumError.details,
+            hint: premiumError.hint
+          })
+          throw premiumError
+        }
+
+        console.log("Premium status retrieved:", premiumData)
+        setIsSubscribed(premiumData?.premium || false)
+      } catch (error: any) {
+        console.error("Error in subscription check process:", {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        })
+        // Don't change subscription status on error
       }
     }
 
@@ -114,6 +296,49 @@ export default function CVMallClient({ searchParams }: { searchParams: { templat
         throw new Error("Resume preview element not found")
       }
 
+      // Get the current form values using getValues()
+      const currentValues = getValues()
+      console.log("Form data to save:", currentValues)
+      
+      // Store CV data in Supabase
+      if (user) {
+        const cvData = {
+          user_id: user.id,
+          data: currentValues,
+          title: currentValues.personalInfo.firstName || currentValues.personalInfo.lastName 
+            ? `${currentValues.personalInfo.firstName || ''} ${currentValues.personalInfo.lastName || ''}'s CV`.trim()
+            : 'Untitled CV'
+        }
+        console.log("Saving CV data:", cvData)
+
+        const { data, error } = await supabase
+          .from('cvs')
+          .upsert([cvData], {
+            onConflict: 'user_id,title'
+          })
+          .select()
+
+        if (error) {
+          console.error("Error storing CV data:", {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          })
+          toast({
+            title: "Error",
+            description: `Failed to save CV data: ${error.message}`,
+            variant: "destructive",
+          })
+        } else {
+          console.log("CV data saved successfully:", data)
+          toast({
+            title: "Success",
+            description: "CV saved successfully.",
+          })
+        }
+      }
+
       // Convert the resume preview to a canvas
       const canvas = await html2canvas(resumePreview as HTMLElement, {
         scale: 2, // Higher scale for better quality
@@ -144,7 +369,7 @@ export default function CVMallClient({ searchParams }: { searchParams: { templat
         variant: "destructive",
       })
     } finally {
-    setIsDownloading(false)
+      setIsDownloading(false)
     }
   }
 
@@ -194,7 +419,11 @@ export default function CVMallClient({ searchParams }: { searchParams: { templat
 
       {/* Main content */}
       <main className="flex-1 overflow-hidden flex-col">
-        <ResumeEditor selectedTemplate={selectedTemplate} onSelectTemplate={setSelectedTemplate} />
+        <ResumeEditor 
+          selectedTemplate={selectedTemplate} 
+          onSelectTemplate={setSelectedTemplate}
+          form={form}
+        />
       </main>
 
       {/* Capture Payment Dialog */}
@@ -216,6 +445,9 @@ export default function CVMallClient({ searchParams }: { searchParams: { templat
           setShowSignupPopup(false)
           setShowCapturePayment(true)
         }}
+        onOpenLogin={() => setPopupMode("login")}
+        mode={popupMode}
+        setMode={setPopupMode}
       />
 
       {/* Stripe Checkout Dialog */}

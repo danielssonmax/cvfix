@@ -132,9 +132,10 @@ type FormData = {
 interface ResumeEditorProps {
   selectedTemplate: string
   onSelectTemplate: (template: string) => void
+  form: ReturnType<typeof useForm>
 }
 
-const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectTemplate }) => {
+const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectTemplate, form }) => {
   const titles: { [key: string]: string } = {
     personalInfo: "Personuppgifter",
     education: "Utbildning",
@@ -144,147 +145,13 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
     profile: "Personuppgifter",
     courses: "Kurser",
     internship: "Praktik",
-    profile: "Profil",
     references: "Referenser",
     traits: "Egenskaper",
     certificates: "Certifikat",
     achievements: "Prestationer",
   }
 
-  const methods = useForm<FormData>({
-    defaultValues: {
-      personalInfo: {
-        title: "",
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        location: "",
-        summary: "",
-        photo: "",
-        address: "",
-        postalCode: "",
-      },
-      experience: [
-        {
-          title: "",
-          company: "",
-          location: "",
-          startDate: "",
-          startYear: "",
-          endDate: "",
-          endYear: "",
-          current: false,
-          description: "",
-        },
-      ],
-      education: [
-        {
-          degree: "",
-          school: "",
-          location: "",
-          startDate: "",
-          startYear: "",
-          endDate: "",
-          endYear: "",
-          current: false,
-          description: "",
-        },
-      ],
-      skills: [
-        {
-          name: "",
-          level: 3,
-        },
-      ],
-      languages: [
-        {
-          name: "",
-          level: "3",
-        },
-      ],
-      sections: {
-        profile: [{ title: "Profil", content: "" }],
-        courses: [
-          {
-            title: "",
-            institution: "",
-            location: "",
-            startDate: "",
-            startYear: "",
-            endDate: "",
-            endYear: "",
-            current: false,
-            description: "",
-          },
-        ],
-        internship: [
-          {
-            title: "",
-            company: "",
-            location: "",
-            startDate: "",
-            startYear: "",
-            endDate: "",
-            endYear: "",
-            current: false,
-            description: "",
-          },
-        ],
-        profile: [
-          {
-            title: "",
-            description: "",
-          },
-        ],
-        references: [
-          {
-            name: "",
-            title: "",
-            company: "",
-            email: "",
-            phone: "",
-            description: "",
-          },
-        ],
-        traits: [
-          {
-            trait: "",
-            description: "",
-          },
-        ],
-        certificates: [
-          {
-            name: "",
-            issuer: "",
-            date: "",
-            year: "",
-            description: "",
-          },
-        ],
-        achievements: [
-          {
-            title: "",
-            date: "",
-            year: "",
-            description: "",
-          },
-        ],
-      },
-    },
-  })
-
-  const formData = useWatch({ control: methods.control })
-
-  useEffect(() => {
-    if (formData.sections && formData.sections.references) {
-    }
-  }, [formData])
-
-  useEffect(() => {
-    if (formData.sections && formData.sections.references) {
-    }
-  }, [formData.sections, formData.sections.references])
+  const formData = useWatch({ control: form.control })
 
   const [showScrollbar, setShowScrollbar] = useState(false)
   const formContainerRef = useRef<HTMLDivElement>(null)
@@ -384,9 +251,9 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
 
   const handleSectionUpdate = useCallback(
     (sectionId: string, value: string) => {
-      methods.setValue(`${sectionId}.content`, value)
+      form.setValue(`${sectionId}.content`, value)
     },
-    [methods],
+    [form],
   )
 
   const toggleSection = (sectionId: string) => {
@@ -523,7 +390,7 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
   );
 
   return (
-    <FormProvider {...methods}>
+    <FormProvider {...form}>
       <div className="flex h-full">
         {/* Left side - Form */}
         <div ref={formContainerRef} className="w-full p-4 bg-white overflow-y-auto sm:w-1/2">

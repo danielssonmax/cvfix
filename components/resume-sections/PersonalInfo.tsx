@@ -27,7 +27,7 @@ type OptionalField = {
 }
 
 const PersonalInfo: React.FC = () => {
-  const { register, watch, setValue } = useFormContext()
+  const { register, watch, setValue, getValues } = useFormContext()
   const [optionalFields, setOptionalFields] = useState<OptionalField[]>([])
   const [availableOptionalFields, setAvailableOptionalFields] = useState<OptionalField["type"][]>([
     "birthDate",
@@ -41,6 +41,26 @@ const PersonalInfo: React.FC = () => {
   ])
 
   const formData = watch()
+
+  useEffect(() => {
+    // Initialize form with default values if they don't exist
+    const currentValues = getValues()
+    if (!currentValues.personalInfo) {
+      setValue("personalInfo", {
+        firstName: "",
+        lastName: "",
+        title: "",
+        email: "",
+        phone: "",
+        address: "",
+        postalCode: "",
+        location: "",
+        photo: "",
+        summary: "",
+        optionalFields: []
+      })
+    }
+  }, [getValues, setValue])
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]

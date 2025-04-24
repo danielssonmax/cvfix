@@ -103,11 +103,6 @@ export function ElegantTemplate({
   sections = [],
   headerColor = "#f1efe7", // Default color
 }: TemplateProps) {
-  console.log("ElegantTemplate data:", JSON.stringify(data, null, 2))
-  console.log("ElegantTemplate sectionOrder:", sectionOrder)
-  console.log("ElegantTemplate sections:", sections)
-  console.log("References data in template:", JSON.stringify(data.sections.references, null, 2))
-
   const renderMainSection = (sectionId: string) => {
     const section = sections.find((s) => s.id === sectionId)
     if (!section || section.hidden) return null
@@ -115,8 +110,6 @@ export function ElegantTemplate({
     const sectionStyle = {
       fontSize: fontSize,
     }
-
-    console.log(`Attempting to render section: ${sectionId}`)
 
     switch (sectionId) {
       case "profile":
@@ -251,11 +244,8 @@ export function ElegantTemplate({
           </div>
         )
       case "certificates":
-        console.log("Rendering certificates section")
-        console.log("Certificates data:", JSON.stringify(data.sections.certificates, null, 2))
         const certificatesData = data.sections.certificates
         if (!Array.isArray(certificatesData) || certificatesData.length === 0) {
-          console.log("No certificate data to render")
           return null
         }
         return (
@@ -290,8 +280,6 @@ export function ElegantTemplate({
           </div>
         )
       case "references":
-        console.log("Rendering references section")
-        console.log("References data:", JSON.stringify(data.sections.references, null, 2))
         const referencesData = data.sections.references
         if (!hasArrayContent(referencesData)) return null
         return (

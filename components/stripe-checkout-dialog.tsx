@@ -55,7 +55,7 @@ export default function StripeCheckoutDialog({ isOpen, onClose, onSubscriptionSu
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Complete Your Payment</DialogTitle>
+          <DialogTitle>CVfixaren medlemskap</DialogTitle>
         </DialogHeader>
         {error ? (
           <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">

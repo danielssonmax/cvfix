@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/AuthContext"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
@@ -17,15 +15,15 @@ interface SignupPopupProps {
   onClose: () => void
   onSignupSuccess: () => void
   onOpenLogin: () => void
+  mode?: "signup" | "login"
+  setMode: (mode: "signup" | "login") => void
 }
 
-export function SignupPopup({ isOpen, onClose, onSignupSuccess, onOpenLogin }: SignupPopupProps) {
+export function SignupPopup({ isOpen, onClose, onSignupSuccess, onOpenLogin, mode = "signup", setMode }: SignupPopupProps) {
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
-  const [name, setName] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const [activeTab, setActiveTab] = React.useState("register")
   const { toast } = useToast()
   const { signUp, signIn, user } = useAuth()
   const router = useRouter()
@@ -39,11 +37,6 @@ export function SignupPopup({ isOpen, onClose, onSignupSuccess, onOpenLogin }: S
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            full_name: name,
-          },
-        },
       })
 
       if (authError) throw authError
@@ -54,8 +47,9 @@ export function SignupPopup({ isOpen, onClose, onSignupSuccess, onOpenLogin }: S
           .from("premium")
           .insert([
             {
-              user_id: authData.user.id,
-              paid: false,
+              uid: authData.user.id,
+              email: email,
+              premium: false,
             },
           ])
 
@@ -96,85 +90,21 @@ export function SignupPopup({ isOpen, onClose, onSignupSuccess, onOpenLogin }: S
     }
   }
 
-  const handleGoogleSignIn = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault()
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: "https://cvfixaren.se/skapa-cv",
-        },
-      })
-      if (error) throw error
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "An unexpected error occurred")
-    }
-  }
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[400px] p-0">
         <DialogHeader className="px-6 pt-6">
-          <DialogTitle className="sr-only">
-            {activeTab === "register" ? "Sign Up" : "Log In"} to WEBBFIX.SE
-          </DialogTitle>
+          <DialogTitle className="sr-only">{mode === "signup" ? "Skapa konto" : "Logga in"} på WEBBFIX.SE</DialogTitle>
         </DialogHeader>
         <div className="px-6 pt-6 pb-4 space-y-6">
-          <div className="text-center">
-            <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Namnl%C3%B6s%20(300%20x%20100%20px)%20(5)-cYUvNT8VqVrkkzUqv0waOLANWpoOh5.png"
-              alt="WEBBFIX.SE Logo"
-              width={160}
-              height={40}
-              className="mx-auto mb-6"
-            />
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="register">Register</TabsTrigger>
-                <TabsTrigger value="login">Login</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-
-          <Button
-            variant="outline"
-            className="w-full flex items-center justify-center gap-2"
-            onClick={handleGoogleSignIn}
-          >
-            <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/google%20logo-QCPZWqivNRdB7RTAzclQTM6z92vAcd.png"
-              alt="Google"
-              width={18}
-              height={18}
-              className="object-contain"
-            />
-            <span>Continue with Google</span>
-          </Button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or</span>
-            </div>
-          </div>
-
-          <form onSubmit={activeTab === "register" ? handleSignup : handleLogin} className="space-y-4">
-            {activeTab === "register" && (
-              <div>
-                <Input
-                  placeholder="What's your name?"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
-            )}
+          <h2 className="text-2xl font-semibold text-center">
+            {mode === "signup" ? "Skapa konto" : "Logga in"}
+          </h2>
+          <form onSubmit={mode === "signup" ? handleSignup : handleLogin} className="space-y-4">
             <div>
               <Input
                 type="email"
-                placeholder="Enter your email address"
+                placeholder="E-postadress"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -183,25 +113,47 @@ export function SignupPopup({ isOpen, onClose, onSignupSuccess, onOpenLogin }: S
             <div>
               <Input
                 type="password"
-                placeholder="Enter your password"
+                placeholder="Lösenord"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
             {error && <p className="text-sm text-red-500">{error}</p>}
-            <Button type="submit" className="w-full bg-[#7C3AED] hover:bg-[#6D28D9]" disabled={isLoading}>
-              {activeTab === "register" ? "Sign Up" : "Log In"}
+            <Button type="submit" className="w-full bg-[#00bf63] hover:bg-[#00a857] text-white" disabled={isLoading}>
+              {mode === "signup" ? "Skapa konto" : "Logga in"}
             </Button>
+            {mode === "signup" && (
+              <p className="text-center text-sm text-gray-500 mt-4">
+                Har du redan ett konto?{" "}
+                <button 
+                  onClick={onOpenLogin} 
+                  className="text-[#00bf63] hover:text-[#00a857] hover:underline"
+                >
+                  Logga in här
+                </button>
+              </p>
+            )}
+            {mode === "login" && (
+              <p className="text-center text-sm text-gray-500 mt-4">
+                Har du inget konto?{" "}
+                <button 
+                  onClick={() => setMode("signup")} 
+                  className="text-[#00bf63] hover:text-[#00a857] hover:underline"
+                >
+                  Skapa konto här
+                </button>
+              </p>
+            )}
           </form>
 
           <p className="text-center text-sm text-gray-500">
             By continuing, you agree to our{" "}
-            <Link href="/terms" className="text-[#7C3AED] hover:underline">
+            <Link href="/terms" className="text-[#00bf63] hover:underline">
               Terms
             </Link>{" "}
             and{" "}
-            <Link href="/privacy" className="text-[#7C3AED] hover:underline">
+            <Link href="/privacy" className="text-[#00bf63] hover:underline">
               Privacy
             </Link>
             .

@@ -10,6 +10,40 @@ interface DownloadPopupProps {
 }
 
 export function DownloadPopup({ isOpen, onClose }: DownloadPopupProps) {
+  const handleDownload = async () => {
+    try {
+      const response = await fetch("/api/download-cv", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          data,
+          template,
+          headerColor,
+          fontSize,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF")
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "cv.pdf"
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      onClose()
+    } catch (error) {
+      console.error("Error downloading CV:", error)
+    }
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
@@ -34,11 +68,7 @@ export function DownloadPopup({ isOpen, onClose }: DownloadPopupProps) {
               Avbryt
             </Button>
             <Button
-              onClick={() => {
-                // Implement download logic here
-                console.log("Downloading CV...")
-                onClose()
-              }}
+              onClick={handleDownload}
               className="w-full sm:w-auto"
             >
               Ladda ner CV

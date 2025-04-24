@@ -6,12 +6,11 @@ import Image from "next/image"
 import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { SignupPopup } from "./signup-popup"
-import { LoginPopup } from "./login-popup"
 import { useAuth } from "@/contexts/AuthContext"
 
 export function Header() {
   const [isSignupOpen, setIsSignupOpen] = useState(false)
-  const [isLoginOpen, setIsLoginOpen] = useState(false)
+  const [popupMode, setPopupMode] = useState<"signup" | "login">("signup")
   const { user, signOut, checkAuthStatus } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
@@ -62,7 +61,10 @@ export function Header() {
             </>
           ) : (
             <>
-              <Button onClick={() => setIsLoginOpen(true)} variant="outline">
+              <Button onClick={() => {
+                setIsSignupOpen(true)
+                setPopupMode("login")
+              }} variant="outline">
                 Logga in
               </Button>
             </>
@@ -72,14 +74,16 @@ export function Header() {
           </Link>
         </nav>
       </div>
-      <SignupPopup isOpen={isSignupOpen} onClose={() => setIsSignupOpen(false)} />
-      <LoginPopup
-        isOpen={isLoginOpen}
-        onClose={() => setIsLoginOpen(false)}
-        onOpenSignup={() => {
-          setIsLoginOpen(false)
-          setIsSignupOpen(true)
+      <SignupPopup
+        isOpen={isSignupOpen}
+        onClose={() => setIsSignupOpen(false)}
+        onSignupSuccess={() => {
+          setIsSignupOpen(false)
+          router.push("/profil/skapa-cv")
         }}
+        onOpenLogin={() => setPopupMode("login")}
+        mode={popupMode}
+        setMode={setPopupMode}
       />
     </header>
   )
