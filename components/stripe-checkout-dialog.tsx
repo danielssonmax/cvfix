@@ -5,6 +5,7 @@ import { Loader2, AlertTriangle } from "lucide-react"
 import React from "react"
 import { loadStripe } from "@stripe/stripe-js"
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js"
+import { useAuth } from "@/contexts/AuthContext"
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -19,9 +20,10 @@ interface StripeCheckoutDialogProps {
 export default function StripeCheckoutDialog({ isOpen, onClose, onSubscriptionSuccess }: StripeCheckoutDialogProps) {
   const [clientSecret, setClientSecret] = React.useState("")
   const [error, setError] = React.useState<string | null>(null)
+  const { user } = useAuth()
 
   React.useEffect(() => {
-    if (isOpen) {
+    if (isOpen && user?.id) {
       if (!stripePromise) {
         setError("Stripe is not properly configured. Please try again later.")
         return
@@ -30,7 +32,10 @@ export default function StripeCheckoutDialog({ isOpen, onClose, onSubscriptionSu
       fetch("/api/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceId: "price_1QsiZFGE8ubumLAk8sl4g9Z9" }),
+        body: JSON.stringify({ 
+          priceId: "price_1QsiZFGE8ubumLAk8sl4g9Z9",
+          userId: user.id 
+        }),
       })
         .then((res) => res.json())
         .then((data) => setClientSecret(data.clientSecret))
@@ -39,7 +44,7 @@ export default function StripeCheckoutDialog({ isOpen, onClose, onSubscriptionSu
           setError("Failed to initialize payment. Please try again later.")
         })
     }
-  }, [isOpen])
+  }, [isOpen, user?.id])
 
   const handleSubscriptionSuccess = () => {
     onSubscriptionSuccess()
