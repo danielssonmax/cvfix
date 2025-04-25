@@ -58,7 +58,7 @@ export default function StripeCheckoutDialog({ isOpen, onClose, onSubscriptionSu
           <DialogTitle>CVfixaren medlemskap</DialogTitle>
         </DialogHeader>
         {error ? (
-          <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
+          <div className="flex flex-col items-center justify-center h-64 text-center space-y-4 overflow-y-auto">
             <AlertTriangle className="h-8 w-8 text-yellow-500" />
             <p className="text-gray-600">{error}</p>
           </div>
