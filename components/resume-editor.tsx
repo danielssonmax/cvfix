@@ -17,6 +17,8 @@ import {
   ChevronUp,
   Eye,
   EyeOff,
+  Save,
+  Download,
 } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { PersonalInfo } from "@/components/resume-sections/PersonalInfo"
@@ -35,6 +37,11 @@ import { Achievements } from "@/components/resume-sections/Achievements"
 import { templates } from "@/components/templates"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/contexts/AuthContext"
+import { toast } from "@/components/ui/use-toast"
+import { supabase } from "@/lib/supabase"
+import html2canvas from "html2canvas"
+import jsPDF from "jspdf"
 
 type FormData = {
   personalInfo: {
@@ -136,6 +143,14 @@ interface ResumeEditorProps {
 }
 
 const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectTemplate, form }) => {
+  const { user } = useAuth()
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [isSubscribed, setIsSubscribed] = useState(false)
+  const [showCapturePayment, setShowCapturePayment] = useState(false)
+  const [showSignupPopup, setShowSignupPopup] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
+
   const titles: { [key: string]: string } = {
     personalInfo: "Personuppgifter",
     education: "Utbildning",
@@ -247,7 +262,33 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
     }
   }, [])
 
-  useEffect(() => {}, [])
+  useEffect(() => {
+    const fetchSubscriptionStatus = async () => {
+      if (!user) {
+        setIsSubscribed(false)
+        return
+      }
+
+      try {
+        const { data: premiumData, error: premiumError } = await supabase
+          .from("premium")
+          .select("premium")
+          .eq("uid", user.id)
+          .single()
+
+        if (premiumError) {
+          console.error("Error fetching premium status:", premiumError)
+          return
+        }
+
+        setIsSubscribed(premiumData?.premium || false)
+      } catch (error) {
+        console.error("Error in subscription check process:", error)
+      }
+    }
+
+    fetchSubscriptionStatus()
+  }, [user])
 
   const handleSectionUpdate = useCallback(
     (sectionId: string, value: string) => {
@@ -389,9 +430,124 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
     </div>
   );
 
+  const handleSaveClick = () => {
+    if (user) {
+      if (isSubscribed) {
+        saveCV()
+      } else {
+        setShowCapturePayment(true)
+      }
+    } else {
+      setShowSignupPopup(true)
+    }
+  }
+
+  const saveCV = async () => {
+    setIsSaving(true)
+    try {
+      const currentValues = form.getValues()
+      const cvData = {
+        user_id: user.id,
+        data: currentValues,
+        title: currentValues.personalInfo.firstName || currentValues.personalInfo.lastName 
+          ? `${currentValues.personalInfo.firstName || ''} ${currentValues.personalInfo.lastName || ''}'s CV`.trim()
+          : 'Untitled CV'
+      }
+
+      const { data, error } = await supabase
+        .from('cvs')
+        .upsert([cvData], {
+          onConflict: 'user_id,title'
+        })
+        .select()
+
+      if (error) {
+        console.error("Error saving CV:", error)
+        toast({
+          title: "Error",
+          description: `Failed to save CV: ${error.message}`,
+          variant: "destructive",
+        })
+      } else {
+        setShowSuccessMessage(true)
+        setTimeout(() => setShowSuccessMessage(false), 3000) // Hide after 3 seconds
+        toast({
+          title: "Success",
+          description: "CV saved successfully to your pages.",
+        })
+      }
+    } catch (error) {
+      console.error("Error saving CV:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save CV. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleDownloadClick = () => {
+    if (user) {
+      if (isSubscribed) {
+        downloadPDF()
+      } else {
+        setShowCapturePayment(true)
+      }
+    } else {
+      setShowSignupPopup(true)
+    }
+  }
+
+  const downloadPDF = async () => {
+    setIsDownloading(true)
+    try {
+      const resumePreview = document.getElementById("resume-preview")
+      if (!resumePreview) {
+        throw new Error("Resume preview element not found")
+      }
+
+      const canvas = await html2canvas(resumePreview as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      })
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      })
+
+      const imgData = canvas.toDataURL("image/png")
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight)
+
+      pdf.save("resume.pdf")
+    } catch (error) {
+      console.error("Error generating PDF:", error)
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   return (
     <FormProvider {...form}>
       <div className="flex h-full">
+        {/* Success message */}
+        {showSuccessMessage && (
+          <div className="fixed top-0 left-0 right-0 bg-green-500 text-white p-4 text-center z-50 animate-fade-in">
+            CV sparades framgångsrikt!
+          </div>
+        )}
+
         {/* Left side - Form */}
         <div ref={formContainerRef} className="w-full p-4 bg-white overflow-y-auto sm:w-1/2">
           <div className="space-y-2 max-w-xl mx-auto sm:w-auto">
@@ -461,9 +617,26 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
             })}
 
             {/* Preview and Download buttons */}
-            <div className="space-y-2">
-              <Button className="w-full bg-black hover:bg-[#00a857] text-white" onClick={() => setShowPreview(true)}>
-                Förhandsgranskning
+            <div className="grid grid-cols-3 gap-2">
+              <Button className="w-full bg-black hover:bg-[#00a857] text-white flex items-center justify-center gap-2" onClick={() => setShowPreview(true)}>
+                <Eye className="h-4 w-4" />
+                Förhandsgranska
+              </Button>
+              <Button 
+                className="w-full bg-[#00bf63] hover:bg-[#00a857] text-white flex items-center justify-center gap-2" 
+                onClick={handleSaveClick}
+                disabled={isSaving}
+              >
+                <Save className="h-4 w-4" />
+                {isSaving ? "Sparar..." : "Spara"}
+              </Button>
+              <Button 
+                className="w-full bg-[#00bf63] hover:bg-[#00a857] text-white flex items-center justify-center gap-2" 
+                onClick={handleDownloadClick}
+                disabled={isDownloading}
+              >
+                <Download className="h-4 w-4" />
+                {isDownloading ? "Laddar ner..." : "Ladda ner"}
               </Button>
             </div>
           </div>
@@ -705,6 +878,14 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
       </Dialog>
 
       <DownloadPopup isOpen={isDownloadPopupOpen} onClose={() => setIsDownloadPopupOpen(false)} />
+
+      {/* Add payment and signup popups */}
+      {showCapturePayment && (
+        <CapturePayment onClose={() => setShowCapturePayment(false)} />
+      )}
+      {showSignupPopup && (
+        <SignupPopup onClose={() => setShowSignupPopup(false)} />
+      )}
     </FormProvider>
   )
 }
