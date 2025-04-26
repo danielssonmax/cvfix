@@ -196,7 +196,7 @@ export default function CVMallClient() {
 
         if (!userExists) {
           console.log("User not found in premium table, creating record")
-          const { error: insertError } = await supabase
+          const { data: insertData, error: insertError } = await supabase
             .from("premium")
             .insert([
               {
@@ -205,17 +205,23 @@ export default function CVMallClient() {
                 premium: false
               }
             ])
+            .select()
           
           if (insertError) {
             console.error("Error creating premium record:", {
               message: insertError.message,
               code: insertError.code,
               details: insertError.details,
-              hint: insertError.hint
+              hint: insertError.hint,
+              user: {
+                id: user.id,
+                email: user.email
+              }
             })
             throw insertError
           }
           
+          console.log("Premium record created successfully:", insertData)
           setIsSubscribed(false)
           return
         }
@@ -405,6 +411,13 @@ export default function CVMallClient() {
               />
             </Link>
             <div className="flex items-center space-x-4">
+              {user && (
+                <Link href="/profil">
+                  <Button variant="outline" className="text-sm">
+                    Profil
+                  </Button>
+                </Link>
+              )}
               <Button
                 className="bg-[#00bf63] hover:bg-[#00a857] text-white text-sm"
                 onClick={handleDownloadClick}
@@ -465,15 +478,17 @@ export default function CVMallClient() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : clientSecret ? (
-              <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
-                <EmbeddedCheckout
-                  onComplete={() => {
-                    setShowPaymentDialog(false)
-                    setIsSubscribed(true)
-                    downloadPDF()
-                  }}
-                />
-              </EmbeddedCheckoutProvider>
+              <div className="overflow-y-auto max-h-[80vh]">
+                <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
+                  <EmbeddedCheckout
+                    onComplete={() => {
+                      setShowPaymentDialog(false)
+                      setIsSubscribed(true)
+                      downloadPDF()
+                    }}
+                  />
+                </EmbeddedCheckoutProvider>
+              </div>
             ) : (
               <div className="text-center p-4">
                 <p>Failed to load payment form. Please try again.</p>
