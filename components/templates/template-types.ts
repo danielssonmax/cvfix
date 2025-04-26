@@ -11,12 +11,9 @@ export interface TemplateProps {
       location?: string
       photo?: string
       summary?: string
-      optionalFields?: Array<{
-        id: string
-        type: string
-        label: string
-        value: string
-      }>
+      optionalFields?: {
+        [key: string]: string
+      }
     }
     education?: any[]
     experience?: any[]

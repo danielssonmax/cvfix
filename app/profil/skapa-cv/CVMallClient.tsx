@@ -114,45 +114,100 @@ export default function CVMallClient() {
         console.log("Loaded CV data:", data)
         console.log("Loaded CV data.data:", data.data)
         
+        // Debug: Log sections data
+        console.log("Sections data from database:", data.data.sections)
+        
         // Ensure we have all required fields in the loaded data
         const loadedData = {
           personalInfo: {
+            ...data.data.personalInfo,
+            title: data.data.personalInfo?.title || "",
             firstName: data.data.personalInfo?.firstName || "",
             lastName: data.data.personalInfo?.lastName || "",
             email: data.data.personalInfo?.email || "",
+            phone: data.data.personalInfo?.phone || "",
+            location: data.data.personalInfo?.location || "",
             summary: data.data.personalInfo?.summary || "",
+            photo: data.data.personalInfo?.photo || "",
+            address: data.data.personalInfo?.address || "",
+            postalCode: data.data.personalInfo?.postalCode || "",
+            optionalFields: data.data.personalInfo?.optionalFields || {}
           },
-          workExperience: data.data.workExperience || [],
+          workExperience: data.data.workExperience || data.data.experience || [],
           education: data.data.education || [],
           skills: data.data.skills || [],
           languages: data.data.languages || [],
-          certifications: data.data.certifications || [],
-          projects: data.data.projects || [],
-          references: data.data.references || [],
+          sections: {
+            profile: data.data.sections?.profile || [],
+            courses: data.data.sections?.courses || [],
+            internship: data.data.sections?.internship || [],
+            references: data.data.sections?.references || [],
+            traits: data.data.sections?.traits || [],
+            certificates: data.data.sections?.certificates || [],
+            achievements: data.data.sections?.achievements || [],
+            hobbies: data.data.sections?.hobbies || {}
+          }
         }
-        
-        console.log("Resetting form with data:", loadedData)
-        console.log("Resetting form with personalInfo:", loadedData.personalInfo)
-        
-        // Reset the form with the loaded data
+
+        // Debug: Log loaded sections
+        console.log("Loaded sections after initialization:", loadedData.sections)
+
+        // Check which sections have data and add them to the form
+        const sectionsWithData = Object.entries(loadedData.sections).filter(([key, value]) => {
+          console.log(`Checking section ${key}:`, value)
+          if (Array.isArray(value)) {
+            const hasData = value.length > 0
+            console.log(`Section ${key} is array, has data:`, hasData)
+            return hasData
+          } else if (typeof value === 'object') {
+            const hasData = Object.keys(value).length > 0
+            console.log(`Section ${key} is object, has data:`, hasData)
+            return hasData
+          }
+          return false
+        }).map(([key]) => key)
+
+        console.log("Sections with data:", sectionsWithData)
+
+        // Add sections with data to the form
+        if (sectionsWithData.length > 0) {
+          const currentValues = getValues()
+          console.log("Current form values:", currentValues)
+          
+          const updatedSections = {
+            ...currentValues.sections,
+            ...sectionsWithData.reduce((acc, section) => ({
+              ...acc,
+              [section]: loadedData.sections[section]
+            }), {})
+          }
+          
+          console.log("Updated sections:", updatedSections)
+          loadedData.sections = updatedSections
+        }
+
+        // Ensure workExperience is properly loaded
+        if (loadedData.workExperience && loadedData.workExperience.length > 0) {
+          console.log("Loading work experience data:", loadedData.workExperience)
+        }
+
+        console.log("Final loaded data before reset:", loadedData)
         reset(loadedData)
         setLastLoadedId(editId)
         setIsInitialLoad(false)
-      } else {
-        console.log("No CV data found for ID:", editId)
       }
     } catch (error) {
-      console.error('Error loading CV data:', error)
+      console.error("Error in loadCVData:", error)
       toast({
         title: "Error",
         description: "Failed to load CV data. Please try again.",
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
       setIsLoadingCV(false)
+      setIsLoading(false)
     }
-  }, [searchParams, user, reset, lastLoadedId, isInitialLoad, isLoadingCV])
+  }, [user, searchParams, lastLoadedId, isInitialLoad, isLoadingCV, reset, getValues])
 
   // Load CV data on mount and when dependencies change
   useEffect(() => {
@@ -243,7 +298,6 @@ export default function CVMallClient() {
           throw premiumError
         }
 
-        console.log("Premium status retrieved:", premiumData)
         setIsSubscribed(premiumData?.premium || false)
       } catch (error: any) {
         console.error("Error in subscription check process:", {
@@ -310,8 +364,24 @@ export default function CVMallClient() {
       if (user) {
         const cvData = {
           user_id: user.id,
-          data: currentValues,
-          title: currentValues.personalInfo.firstName || currentValues.personalInfo.lastName 
+          data: {
+            personalInfo: currentValues.personalInfo || {},
+            workExperience: currentValues.workExperience || [],
+            education: currentValues.education || [],
+            skills: currentValues.skills || [],
+            languages: currentValues.languages || [],
+            sections: currentValues.sections || {
+              profile: [],
+              courses: [],
+              internship: [],
+              references: [],
+              traits: [],
+              certificates: [],
+              achievements: [],
+              hobbies: {}
+            }
+          },
+          title: currentValues.personalInfo?.firstName || currentValues.personalInfo?.lastName 
             ? `${currentValues.personalInfo.firstName || ''} ${currentValues.personalInfo.lastName || ''}'s CV`.trim()
             : 'Untitled CV'
         }

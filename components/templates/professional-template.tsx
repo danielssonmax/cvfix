@@ -71,11 +71,11 @@ export function ProfessionalTemplate({
 
       <div className="p-8 grid grid-cols-1 gap-8">
         {/* Experience */}
-        {hasArrayContent(data.experience) && (
+        {hasArrayContent(data.workExperience) && (
           <section>
             <h2 className="text-2xl font-bold mb-4 pb-2 border-b-2 border-gray-300">Arbetslivserfarenhet</h2>
             <div className="space-y-6">
-              {data.experience!.filter(hasContent).map((exp, index) => (
+              {data.workExperience!.filter(hasContent).map((exp, index) => (
                 <div key={index}>
                   <div className="flex justify-between items-start mb-2">
                     <div>

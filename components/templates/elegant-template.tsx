@@ -345,26 +345,25 @@ export function ElegantTemplate({
           "website",
           "linkedin",
         ]
-        const hasRelevantFields =
-          data.personalInfo.optionalFields &&
-          data.personalInfo.optionalFields.some(
-            (field: OptionalField) =>
-              (relevantFields.includes(field.type) || field.type === "custom") && field.value.trim() !== "",
+        const hasRelevantFields = data.personalInfo.optionalFields && 
+          Object.entries(data.personalInfo.optionalFields).some(([key, value]) => 
+            (relevantFields.includes(key) || key === "custom") && value && value.toString().trim() !== ""
           )
         if (!hasRelevantFields) return null
         return (
           <div className="mb-6" style={sectionStyle}>
-            <h2 className="text-lg font-semibold uppercase mb-4 pb-2 border-b border-white/20">Personuppgifter</h2>
-            {data.personalInfo.optionalFields &&
-              data.personalInfo.optionalFields
-                .filter(
-                  (field: OptionalField) =>
-                    (relevantFields.includes(field.type) || field.type === "custom") && field.value.trim() !== "",
+            <h2 className="text-lg font-bold mb-2" style={{ color: headerColor || "#000000" }}>
+              Personuppgifter
+            </h2>
+            {data.personalInfo.optionalFields && 
+              Object.entries(data.personalInfo.optionalFields)
+                .filter(([key, value]) => 
+                  (relevantFields.includes(key) || key === "custom") && value && value.toString().trim() !== ""
                 )
-                .map((field: OptionalField) => (
-                  <div key={field.id} className="mb-2">
-                    <p className="text-sm text-gray-500">{field.label}</p>
-                    <p className="mt-1px text-white">{field.value}</p>
+                .map(([key, value]) => (
+                  <div key={key} className="mb-2">
+                    <p className="text-sm text-gray-500">{key}</p>
+                    <p className="mt-1px text-white">{value}</p>
                   </div>
                 ))}
           </div>

@@ -45,7 +45,7 @@ import { supabase } from "@/lib/supabase"
 import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
 
-type FormData = {
+interface FormData {
   personalInfo: {
     title: string
     firstName: string
@@ -57,84 +57,40 @@ type FormData = {
     photo: string
     address: string
     postalCode: string
+    optionalFields: {
+      [key: string]: boolean
+    }
   }
-  experience: Array<{
+  workExperience: Array<{
     title: string
     company: string
     location: string
     startDate: string
-    startYear: string
     endDate: string
-    endYear: string
     current: boolean
     description: string
   }>
   education: Array<{
-    degree: string
     school: string
-    location: string
+    degree: string
+    field: string
     startDate: string
-    startYear: string
     endDate: string
-    endYear: string
     current: boolean
     description: string
   }>
   skills: Array<{
     name: string
-    level: number
+    level: string
   }>
   languages: Array<{
     name: string
     level: string
   }>
   sections: {
-    profile: Array<{ title: string; content: string }>
-    courses: Array<{
-      title: string
-      institution: string
-      location: string
-      startDate: string
-      startYear: string
-      endDate: string
-      endYear: string
-      current: boolean
-      description: string
-    }>
-    internship: Array<{
-      title: string
-      company: string
-      location: string
-      startDate: string
-      startYear: string
-      endDate: string
-      endYear: string
-      current: boolean
-      description: string
-    }>
-    profile: Array<{ title: string; description: string }>
-    references: Array<{
-      name: string
-      title: string
-      company: string
-      email: string
-      phone: string
-      description: string
-    }>
-    traits: Array<{ trait: string; description: string }>
-    certificates: Array<{
-      name: string
-      issuer: string
-      date: string
-      year: string
-      description: string
-    }>
-    achievements: Array<{
-      title: string
-      date: string
-      year: string
-      description: string
-    }>
+    [key: string]: {
+      hidden: boolean
+    }
   }
 }
 
@@ -397,13 +353,22 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
   const memoizedResumePreviewData = useMemo(
     () => ({
       ...formData,
+      experience: formData.workExperience || [],
       sections: {
         ...formData.sections,
         personalInfo: formData.personalInfo,
         education: formData.education,
-        experience: formData.experience,
         skills: formData.skills,
         languages: formData.languages,
+        // Add all sections with data
+        ...Object.entries(formData.sections || {}).reduce((acc, [key, value]) => {
+          if (Array.isArray(value) && value.length > 0) {
+            acc[key] = value
+          } else if (typeof value === 'object' && Object.keys(value).length > 0) {
+            acc[key] = value
+          }
+          return acc
+        }, {})
       },
     }),
     [formData],
@@ -475,13 +440,59 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
     setIsSaving(true)
     try {
       const currentValues = form.getValues()
-      const cvData = {
-        user_id: user.id,
-        data: currentValues,
-        title: currentValues.personalInfo.firstName || currentValues.personalInfo.lastName 
-          ? `${currentValues.personalInfo.firstName || ''} ${currentValues.personalInfo.lastName || ''}'s CV`.trim()
-          : 'Untitled CV'
+      console.log("Saving CV with values:", currentValues)
+
+      // Skapa en uppdaterad sections-objekt som bara innehåller aktiva sektioner
+      const updatedSections = Object.entries(currentValues.sections || {})
+        .filter(([sectionId]) => addedSections.includes(sectionId))
+        .reduce((acc, [key, value]) => {
+          acc[key] = value
+          return acc
+        }, {})
+
+      // Filtrera bort tomma objekt från grundläggande sektioner
+      const filterEmptyObjects = (array: any[]) => {
+        return array.filter(item => {
+          // Kontrollera om objektet har några icke-tomma värden
+          return Object.values(item).some(value => {
+            if (typeof value === 'string') return value.trim() !== ''
+            if (typeof value === 'boolean') return true
+            return value !== null && value !== undefined
+          })
+        })
       }
+
+      // Hantera grundläggande sektioner baserat på addedSections
+      const cvData = {
+        user_id: user?.id,
+        title: currentValues.personalInfo?.firstName || currentValues.personalInfo?.lastName 
+          ? `${currentValues.personalInfo.firstName || ''} ${currentValues.personalInfo.lastName || ''}'s CV`.trim()
+          : 'Untitled CV',
+        data: {
+          personalInfo: {
+            ...currentValues.personalInfo,
+            title: currentValues.personalInfo.title || "",
+            firstName: currentValues.personalInfo.firstName || "",
+            lastName: currentValues.personalInfo.lastName || "",
+            email: currentValues.personalInfo.email || "",
+            phone: currentValues.personalInfo.phone || "",
+            location: currentValues.personalInfo.location || "",
+            summary: currentValues.personalInfo.summary || "",
+            photo: currentValues.personalInfo.photo || "",
+            address: currentValues.personalInfo.address || "",
+            postalCode: currentValues.personalInfo.postalCode || "",
+            optionalFields: currentValues.personalInfo.optionalFields || {},
+          },
+          // Spara bara data för sektioner som finns i addedSections
+          workExperience: addedSections.includes('experience') ? filterEmptyObjects(currentValues.workExperience || []) : [],
+          education: addedSections.includes('education') ? filterEmptyObjects(currentValues.education || []) : [],
+          skills: addedSections.includes('skills') ? filterEmptyObjects(currentValues.skills || []) : [],
+          languages: addedSections.includes('languages') ? filterEmptyObjects(currentValues.languages || []) : [],
+          sections: updatedSections,
+        }
+      }
+
+      console.log("Saving CV data:", cvData)
 
       const { data, error } = await supabase
         .from('cvs')
@@ -497,14 +508,15 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
           description: `Failed to save CV: ${error.message}`,
           variant: "destructive",
         })
-      } else {
-        setShowSuccessMessage(true)
-        setTimeout(() => setShowSuccessMessage(false), 3000) // Hide after 3 seconds
-        toast({
-          title: "Success",
-          description: "CV saved successfully to your pages.",
-        })
+        return
       }
+
+      setShowSuccessMessage(true)
+      setTimeout(() => setShowSuccessMessage(false), 3000)
+      toast({
+        title: "Success",
+        description: "CV saved successfully to your pages.",
+      })
     } catch (error) {
       console.error("Error saving CV:", error)
       toast({
@@ -532,15 +544,23 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
   const downloadPDF = async () => {
     setIsDownloading(true)
     try {
+      // Spara först CV:t innan nedladdning
+      await saveCV()
+
       const resumePreview = document.getElementById("resume-preview")
       if (!resumePreview) {
         throw new Error("Resume preview element not found")
       }
 
+      // Vänta på att alla element ska laddas
+      await new Promise(resolve => setTimeout(resolve, 500))
+
       const canvas = await html2canvas(resumePreview as HTMLElement, {
         scale: 2,
         useCORS: true,
         logging: false,
+        allowTaint: true,
+        backgroundColor: '#FFFFFF'
       })
 
       const pdf = new jsPDF({
@@ -554,6 +574,7 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight)
 
+      // Spara PDF:en
       pdf.save("resume.pdf")
     } catch (error) {
       console.error("Error generating PDF:", error)
@@ -587,15 +608,53 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
       section => !addedSections.includes(section.id)
     )
 
-    console.log('Available sections:', {
-      removedBasicSections,
-      availableOptional,
-      currentAddedSections: addedSections,
-      currentBasicSections: basicSections
-    })
+    // Lägg till sektioner som har data men inte är tillagda
+    const sectionsWithData = Object.entries(formData.sections || {})
+      .filter(([key, value]) => {
+        // Exkludera sektioner som redan är tillagda
+        if (addedSections.includes(key)) {
+          return false
+        }
+        if (Array.isArray(value)) {
+          return value.length > 0
+        } else if (typeof value === 'object') {
+          return Object.keys(value).length > 0
+        }
+        return false
+      })
+      .map(([key]) => {
+        const section = optionalSections.find(s => s.id === key)
+        return section ? {
+          id: section.id,
+          title: section.title,
+          component: section.component,
+          hasData: true
+        } : null
+      })
+      .filter(Boolean)
 
-    return [...removedBasicSections, ...availableOptional]
-  }, [addedSections, basicSections, staticSectionSections, optionalSections])
+    return [...removedBasicSections, ...availableOptional, ...sectionsWithData]
+  }, [addedSections, basicSections, staticSectionSections, optionalSections, formData.sections])
+
+  useEffect(() => {
+    // Automatically add sections that have data
+    const sectionsWithData = Object.entries(formData.sections || {})
+      .filter(([key, value]) => {
+        if (Array.isArray(value)) {
+          return value.length > 0
+        } else if (typeof value === 'object') {
+          return Object.keys(value).length > 0
+        }
+        return false
+      })
+      .map(([key]) => key)
+
+    sectionsWithData.forEach(sectionId => {
+      if (!addedSections.includes(sectionId)) {
+        handleAddSection(sectionId)
+      }
+    })
+  }, [formData.sections])
 
   const handleAddSection = (sectionId: string) => {
     console.log('handleAddSection called with sectionId:', sectionId)
@@ -1003,23 +1062,14 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
           </DialogHeader>
           <div className="grid gap-2 py-4">
             {(() => {
-              console.log('Rendering popup sections:', {
-                availableOptionalSections: availableOptionalSections.map(s => s.id),
-                addedSections,
-                basicSections
-              })
+              
               return availableOptionalSections.map((section) => {
-                console.log('Rendering section button:', {
-                  sectionId: section.id,
-                  isInAddedSections: addedSections.includes(section.id),
-                  isInBasicSections: basicSections.includes(section.id)
-                })
+            
                 return (
                   <button
                     key={section.id}
                     className="flex items-center justify-between w-full px-4 py-2 text-left border rounded-md hover:bg-gray-50"
                     onClick={() => {
-                      console.log('Section button clicked:', section.id)
                       handleAddSection(section.id)
                     }}
                   >
@@ -1034,7 +1084,6 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
-              console.log('Closing popup')
               setShowAddSectionPopup(false)
             }}>
               Stäng

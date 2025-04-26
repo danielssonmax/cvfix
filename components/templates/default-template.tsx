@@ -130,7 +130,7 @@ export function DefaultTemplate({
           </div>
         )
       case "experience":
-        if (!hasArrayContent(data.experience)) return null
+        if (!hasArrayContent(data.workExperience)) return null
         return (
           <div className="mb-6" style={sectionStyle}>
             <h2
@@ -139,7 +139,7 @@ export function DefaultTemplate({
             >
               ARBETSLIVSERFARENHET
             </h2>
-            {data.experience.filter(hasContent).map((exp: any, index: number) => (
+            {data.workExperience.filter(hasContent).map((exp: any, index: number) => (
               <div key={index} className="mb-4">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold break-words text-black">{exp.title}</h3>
@@ -316,6 +316,21 @@ export function DefaultTemplate({
       fontSize: fontSize,
     }
 
+    const getFieldLabel = (key: string): string => {
+      const labels: Record<string, string> = {
+        birthDate: "Födelsedatum",
+        birthPlace: "Födelseort",
+        drivingLicense: "Körkort",
+        gender: "Kön",
+        nationality: "Nationalitet",
+        civilStatus: "Civilstånd",
+        website: "Webbplats",
+        linkedin: "LinkedIn",
+        custom: "Anpassat fält"
+      }
+      return labels[key] || key
+    }
+
     switch (sectionId) {
       case "personalInfo":
         const relevantFields = [
@@ -328,11 +343,9 @@ export function DefaultTemplate({
           "website",
           "linkedin",
         ]
-        const hasRelevantFields =
-          data.personalInfo.optionalFields &&
-          data.personalInfo.optionalFields.some(
-            (field: OptionalField) =>
-              (relevantFields.includes(field.type) || field.type === "custom") && field.value.trim() !== "",
+        const hasRelevantFields = data.personalInfo.optionalFields && 
+          Object.entries(data.personalInfo.optionalFields).some(([key, value]) => 
+            (relevantFields.includes(key) || key === "custom") && value && value.toString().trim() !== ""
           )
         if (!hasRelevantFields) return null
         return (
@@ -340,16 +353,15 @@ export function DefaultTemplate({
             <h2 className="text-lg font-bold mb-2" style={{ color: headerColor || "#000000" }}>
               Personuppgifter
             </h2>
-            {data.personalInfo.optionalFields &&
-              data.personalInfo.optionalFields
-                .filter(
-                  (field: OptionalField) =>
-                    (relevantFields.includes(field.type) || field.type === "custom") && field.value.trim() !== "",
+            {data.personalInfo.optionalFields && 
+              Object.entries(data.personalInfo.optionalFields)
+                .filter(([key, value]) => 
+                  (relevantFields.includes(key) || key === "custom") && value && value.toString().trim() !== ""
                 )
-                .map((field: OptionalField) => (
-                  <div key={field.id} className="mb-2">
-                    <p className="text-sm text-gray-500">{field.label}</p>
-                    <p className="mt-1px text-black">{field.value}</p>
+                .map(([key, value]) => (
+                  <div key={key} className="mb-2">
+                    <p className="text-sm text-gray-500">{getFieldLabel(key)}</p>
+                    <p className="mt-1px text-black">{value}</p>
                   </div>
                 ))}
           </div>

@@ -28,7 +28,7 @@ type OptionalField = {
 
 const PersonalInfo: React.FC = () => {
   const { register, watch, setValue, getValues } = useFormContext()
-  const [optionalFields, setOptionalFields] = useState<OptionalField[]>([])
+  const [optionalFields, setOptionalFields] = useState<Record<string, string>>({})
   const [availableOptionalFields, setAvailableOptionalFields] = useState<OptionalField["type"][]>([
     "birthDate",
     "birthPlace",
@@ -42,8 +42,8 @@ const PersonalInfo: React.FC = () => {
 
   const formData = watch()
 
+  // Initialize form with default values if they don't exist
   useEffect(() => {
-    // Initialize form with default values if they don't exist
     const currentValues = getValues()
     if (!currentValues.personalInfo) {
       setValue("personalInfo", {
@@ -57,10 +57,37 @@ const PersonalInfo: React.FC = () => {
         location: "",
         photo: "",
         summary: "",
-        optionalFields: []
+        optionalFields: {}
       })
     }
   }, [getValues, setValue])
+
+  // Handle initial load of optional fields
+  useEffect(() => {
+    const currentValues = getValues()
+    const existingFields = currentValues.personalInfo?.optionalFields || {}
+    
+    if (Object.keys(existingFields).length > 0 && Object.keys(optionalFields).length === 0) {
+      setOptionalFields(existingFields)
+      setAvailableOptionalFields(
+        availableOptionalFields.filter((field) => !(field in existingFields))
+      )
+    }
+  }, [getValues])
+
+  // Handle updates to optional fields
+  useEffect(() => {
+    const subscription = watch((value) => {
+      const fields = value.personalInfo?.optionalFields || {}
+      if (JSON.stringify(fields) !== JSON.stringify(optionalFields)) {
+        setOptionalFields(fields)
+        setAvailableOptionalFields(
+          availableOptionalFields.filter((field) => !(field in fields))
+        )
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [watch, availableOptionalFields])
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -74,13 +101,8 @@ const PersonalInfo: React.FC = () => {
   }
 
   const addOptionalField = (type: OptionalField["type"]) => {
-    const newField: OptionalField = {
-      id: uuidv4(),
-      type,
-      label: type === "custom" ? "" : getFieldLabel(type),
-      value: "",
-    }
-    const updatedFields = [...optionalFields, newField]
+    const label = type === "custom" ? "" : getFieldLabel(type)
+    const updatedFields = { ...optionalFields, [type]: "" }
     setOptionalFields(updatedFields)
     setAvailableOptionalFields(availableOptionalFields.filter((field) => field !== type))
     setValue(`personalInfo.optionalFields`, updatedFields)
@@ -101,26 +123,14 @@ const PersonalInfo: React.FC = () => {
     return labels[type]
   }
 
-  const removeOptionalField = (id: string) => {
-    const fieldToRemove = optionalFields.find((field) => field.id === id)
-    if (fieldToRemove) {
-      const updatedFields = optionalFields.filter((field) => field.id !== id)
-      setOptionalFields(updatedFields)
-      setAvailableOptionalFields([...availableOptionalFields, fieldToRemove.type])
-      setValue(`personalInfo.optionalFields`, updatedFields)
+  const removeOptionalField = (type: string) => {
+    const { [type]: removed, ...remainingFields } = optionalFields
+    setOptionalFields(remainingFields)
+    if (type !== "custom") {
+      setAvailableOptionalFields([...availableOptionalFields, type as OptionalField["type"]])
     }
+    setValue(`personalInfo.optionalFields`, remainingFields)
   }
-
-  useEffect(() => {
-    const existingFields = watch("personalInfo.optionalFields") || []
-    if (existingFields.length > 0 && optionalFields.length === 0) {
-      setOptionalFields(existingFields)
-      setValue(`personalInfo.optionalFields`, existingFields)
-      setAvailableOptionalFields(
-        availableOptionalFields.filter((field) => !existingFields.some((f: OptionalField) => f.type === field)),
-      )
-    }
-  }, [watch, optionalFields.length, availableOptionalFields, setValue])
 
   return (
     <div className="space-y-2">
@@ -205,40 +215,23 @@ const PersonalInfo: React.FC = () => {
         </div>
 
         {/* Optional fields */}
-        {optionalFields.map((field) => (
-          <div key={field.id}>
+        {Object.entries(optionalFields).map(([type, value]) => (
+          <div key={type}>
             <Label className="mb-1 text-xs text-gray-600 font-bold">
-              {field.type === "custom" ? field.label || "Anpassat fält" : field.label}
+              {type === "custom" ? value || "Anpassat fält" : getFieldLabel(type as OptionalField["type"])}
             </Label>
             <div className="flex gap-2 items-center">
-              {field.type === "custom" && (
-                <Input
-                  {...register(`personalInfo.optionalFields.${field.id}.label`)}
-                  defaultValue={field.label}
-                  onChange={(e) => {
-                    const updatedFields = optionalFields.map((f) =>
-                      f.id === field.id ? { ...f, label: e.target.value } : f,
-                    )
-                    setOptionalFields(updatedFields)
-                    setValue(`personalInfo.optionalFields`, updatedFields)
-                  }}
-                  className="bg-zinc-100 h-8 text-sm w-1/3"
-                  placeholder="Fältnamn"
-                />
-              )}
               <Input
-                {...register(`personalInfo.optionalFields.${field.id}.value`)}
-                defaultValue={field.value}
+                {...register(`personalInfo.optionalFields.${type}`)}
+                defaultValue={value}
                 onChange={(e) => {
-                  const updatedFields = optionalFields.map((f) =>
-                    f.id === field.id ? { ...f, value: e.target.value } : f,
-                  )
+                  const updatedFields = { ...optionalFields, [type]: e.target.value }
                   setOptionalFields(updatedFields)
                   setValue(`personalInfo.optionalFields`, updatedFields)
                 }}
                 className="bg-zinc-100 h-8 text-sm flex-grow"
               />
-              <Button variant="ghost" size="icon" onClick={() => removeOptionalField(field.id)}>
+              <Button variant="ghost" size="icon" onClick={() => removeOptionalField(type)}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>

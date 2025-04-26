@@ -9,6 +9,8 @@ import { Trash2, Edit, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { RichTextEditor } from "@/components/rich-text-editor"
 import { Switch } from "@/components/ui/switch"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Textarea } from "@/components/ui/textarea"
 
 const capitalizeFirstLetter = (string: string) => {
   return string.charAt(0).toUpperCase() + string.slice(1)
@@ -36,10 +38,10 @@ const formatDate = (date: string, year: string) => {
 }
 
 export const Experience: React.FC = () => {
-  const { control, register, watch, setValue } = useFormContext()
+  const { register, control, watch, setValue } = useFormContext()
   const { fields, append, remove } = useFieldArray({
     control,
-    name: "experience",
+    name: "workExperience",
   })
 
   const [openFields, setOpenFields] = useState<number[]>([])
@@ -52,11 +54,14 @@ export const Experience: React.FC = () => {
     }
   }, [fields.length, openFields.length])
 
-  const watchFieldArray = watch("experience")
-  const controlledFields = fields.map((field, index) => ({
-    ...field,
-    ...watchFieldArray[index],
-  }))
+  const watchFieldArray = watch("workExperience") || []
+
+  const controlledFields = fields.map((field, index) => {
+    return {
+      ...field,
+      ...watchFieldArray[index],
+    }
+  })
 
   const handleAddNew = () => {
     setOpenFields([])
@@ -96,6 +101,10 @@ export const Experience: React.FC = () => {
                   <span className="text-gray-800 text-sm">
                     {field.title || field.company ? `${field.title} - ${field.company}` : "Ny erfarenhet"}
                   </span>
+                  <p className="text-gray-500 text-sm">
+                    {formatDate(field.startDate, field.startYear)} -{" "}
+                    {field.current ? "Nuvarande" : formatDate(field.endDate, field.endYear)}
+                  </p>
                 </div>
                 <Edit className="h-4 w-4 text-gray-400" />
               </div>
@@ -110,7 +119,7 @@ export const Experience: React.FC = () => {
                   <div>
                     <Label className="mb-1 text-xs text-gray-600">Titel</Label>
                     <Input
-                      {...register(`experience.${index}.title`)}
+                      {...register(`workExperience.${index}.title`)}
                       className="bg-zinc-100 h-8 text-sm"
                       placeholder="t.ex. Utvecklare"
                     />
@@ -118,41 +127,42 @@ export const Experience: React.FC = () => {
                   <div>
                     <Label className="mb-1 text-xs text-gray-600">Företag</Label>
                     <Input
-                      {...register(`experience.${index}.company`)}
+                      {...register(`workExperience.${index}.company`)}
                       className="bg-zinc-100 h-8 text-sm"
-                      placeholder="t.ex. Tech AB"
+                      placeholder="t.ex. Google"
                     />
                   </div>
                 </div>
+
                 <div>
                   <Label className="mb-1 text-xs text-gray-600">Plats</Label>
                   <Input
-                    {...register(`experience.${index}.location`)}
-                    placeholder="t.ex. Stockholm"
+                    {...register(`workExperience.${index}.location`)}
                     className="bg-zinc-100 h-8 text-sm"
+                    placeholder="t.ex. Stockholm"
                   />
                 </div>
+
                 <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-4">
                   <div>
                     <Label className="mb-1 text-xs text-gray-600">Startdatum</Label>
                     <div className="grid grid-cols-2 gap-2">
                       <select
-                        {...register(`experience.${index}.startDate`)}
+                        {...register(`workExperience.${index}.startDate`)}
                         className="h-8 rounded-md border border-input bg-zinc-100 px-3 py-2 text-sm ring-offset-background w-full"
                       >
                         <option value="">Välj månad</option>
                         {Array.from({ length: 12 }, (_, i) => {
-                          const monthNumber = i + 1
                           const month = new Date(0, i).toLocaleString("sv-SE", { month: "long" })
                           return (
-                            <option key={i} value={monthNumber}>
+                            <option key={i} value={i + 1}>
                               {capitalizeFirstLetter(month)}
                             </option>
                           )
                         })}
                       </select>
                       <select
-                        {...register(`experience.${index}.startYear`)}
+                        {...register(`workExperience.${index}.startYear`)}
                         className="h-8 rounded-md border border-input bg-zinc-100 px-3 py-2 text-sm ring-offset-background w-full"
                       >
                         <option value="">Välj år</option>
@@ -171,23 +181,22 @@ export const Experience: React.FC = () => {
                     <Label className="mb-1 text-xs text-gray-600">Slutdatum</Label>
                     <div className="grid grid-cols-2 gap-2">
                       <select
-                        {...register(`experience.${index}.endDate`)}
+                        {...register(`workExperience.${index}.endDate`)}
                         className="h-8 rounded-md border border-input bg-zinc-100 px-3 py-2 text-sm ring-offset-background w-full"
                         disabled={field.current}
                       >
                         <option value="">Välj månad</option>
                         {Array.from({ length: 12 }, (_, i) => {
-                          const monthNumber = i + 1
                           const month = new Date(0, i).toLocaleString("sv-SE", { month: "long" })
                           return (
-                            <option key={i} value={monthNumber}>
+                            <option key={i} value={i + 1}>
                               {capitalizeFirstLetter(month)}
                             </option>
                           )
                         })}
                       </select>
                       <select
-                        {...register(`experience.${index}.endYear`)}
+                        {...register(`workExperience.${index}.endYear`)}
                         className="h-8 rounded-md border border-input bg-zinc-100 px-3 py-2 text-sm ring-offset-background w-full"
                         disabled={field.current}
                       >
@@ -208,23 +217,25 @@ export const Experience: React.FC = () => {
                     <Switch
                       checked={field.current}
                       onCheckedChange={(checked) => {
-                        setValue(`experience.${index}.current`, checked)
+                        setValue(`workExperience.${index}.current`, checked)
                         if (checked) {
-                          setValue(`experience.${index}.endDate`, "")
-                          setValue(`experience.${index}.endYear`, "")
+                          setValue(`workExperience.${index}.endDate`, "")
+                          setValue(`workExperience.${index}.endYear`, "")
                         }
                       }}
                     />
                   </div>
                 </div>
+
                 <div>
                   <Label className="mb-1 text-xs text-gray-600">Beskrivning</Label>
                   <RichTextEditor
-                    name={`experience.${index}.description`}
+                    name={`workExperience.${index}.description`}
                     control={control}
                     defaultValue={field.description}
                   />
                 </div>
+
                 <div className="absolute right-4 flex space-x-2" style={{ bottom: "20px" }}>
                   <Button
                     variant="default"
@@ -256,19 +267,12 @@ export const Experience: React.FC = () => {
                 </div>
               </div>
             )}
-            {!isOpen && (
-              <p className="text-sm text-gray-500 p-3">
-                {formatDate(field.startDate, field.startYear)}
-                {(field.startDate || field.startYear) && (field.endDate || field.endYear || field.current) && " - "}
-                {field.current ? "Nutid" : formatDate(field.endDate, field.endYear)}
-              </p>
-            )}
           </div>
         )
       })}
       <Button onClick={handleAddNew} variant="outline" size="sm" className="w-full text-xs px-4 py-2 mt-4">
         <Plus className="h-3 w-3 mr-2" />
-        Lägg till erfarenhet
+        Lägg till arbetserfarenhet
       </Button>
     </div>
   )
