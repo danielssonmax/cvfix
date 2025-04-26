@@ -19,6 +19,8 @@ import {
   EyeOff,
   Save,
   Download,
+  Plus,
+  Trash2,
 } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { PersonalInfo } from "@/components/resume-sections/PersonalInfo"
@@ -35,7 +37,7 @@ import { Traits } from "@/components/resume-sections/Traits"
 import { Certificates } from "@/components/resume-sections/Certificates"
 import { Achievements } from "@/components/resume-sections/Achievements"
 import { templates } from "@/components/templates"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/AuthContext"
 import { toast } from "@/components/ui/use-toast"
@@ -150,6 +152,7 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
   const [showSignupPopup, setShowSignupPopup] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
+  const [showAddSectionPopup, setShowAddSectionPopup] = useState(false)
 
   const titles: { [key: string]: string } = {
     personalInfo: "Personuppgifter",
@@ -170,20 +173,8 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
 
   const [showScrollbar, setShowScrollbar] = useState(false)
   const formContainerRef = useRef<HTMLDivElement>(null)
-  const [addedSections, setAddedSections] = useState<string[]>([
-    "personalInfo",
-    "experience", // Flyttad upp
-    "education", // Flyttad ner
-    "skills",
-    "languages",
-    "courses",
-    "internship",
-    "traits",
-    "certificates",
-    "achievements",
-    "profile",
-    "references",
-  ])
+  const basicSections = ["personalInfo", "experience", "education", "skills", "languages"]
+  const [addedSections, setAddedSections] = useState<string[]>(basicSections)
   const [isDownloadPopupOpen, setIsDownloadPopupOpen] = useState(false)
   const [selectedFont, setSelectedFont] = useState("Poppins")
   const [fontSize, setFontSize] = useState("M")
@@ -203,19 +194,22 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
     { id: "education", title: "Utbildning", component: Education, removable: true, hidden: false },
     { id: "experience", title: "Arbetslivserfarenhet", component: Experience, removable: true, hidden: false },
     { id: "skills", title: "Färdigheter", component: Skills, removable: true, hidden: false },
-    { id: "languages", title: "Språk", component: Languages, removable: true, hidden: false },
-    { id: "courses", title: "Kurser", component: Courses, removable: true, hidden: true },
-    { id: "internship", title: "Praktik", component: Internship, removable: true, hidden: true },
-    { id: "traits", title: "Egenskaper", component: Traits, removable: true, hidden: true },
-    { id: "certificates", title: "Certifikat", component: Certificates, removable: true, hidden: true },
-    { id: "achievements", title: "Prestationer", component: Achievements, removable: true, hidden: true },
-    { id: "profile", title: "Profil", component: Profile, removable: true, hidden: true },
-    { id: "references", title: "Referenser", component: References, removable: true, hidden: true },
+    { id: "languages", title: "Språk", component: Languages, removable: true, hidden: false }
   ])
 
   const fontSizeDropdownRef = useRef<HTMLDivElement>(null)
   const fontDropdownRef = useRef<HTMLDivElement>(null)
   const templateDropdownRef = useRef<HTMLDivElement>(null)
+
+  const optionalSections = [
+    { id: "courses", title: "Kurser", component: Courses },
+    { id: "internship", title: "Praktik", component: Internship },
+    { id: "traits", title: "Egenskaper", component: Traits },
+    { id: "certificates", title: "Certifikat", component: Certificates },
+    { id: "achievements", title: "Prestationer", component: Achievements },
+    { id: "profile", title: "Profil", component: Profile },
+    { id: "references", title: "Referenser", component: References }
+  ]
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -302,8 +296,43 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
   }
 
   const handleRemoveSection = useCallback((id: string) => {
+    console.log('handleRemoveSection called with id:', id)
+    console.log('Current addedSections:', addedSections)
+    console.log('Is basic section?', basicSections.includes(id))
+    
     if (id !== "personalInfo") {
-      setAddedSections((prev) => prev.filter((sectionId) => sectionId !== id))
+      if (basicSections.includes(id)) {
+        console.log('Removing basic section:', id)
+        setAddedSections(prev => {
+          const newSections = prev.filter(sectionId => sectionId !== id)
+          console.log('New addedSections after removing basic:', newSections)
+          return newSections
+        })
+        setStaticSectionSections(prev => {
+          const newSections = prev.map(section => 
+            section.id === id ? { ...section, hidden: true } : section
+          )
+          console.log('Updated staticSectionSections:', newSections)
+          return newSections
+        })
+      } else {
+        console.log('Removing optional section:', id)
+        setAddedSections(prev => {
+          const newSections = prev.filter(sectionId => sectionId !== id)
+          console.log('New addedSections after removing optional:', newSections)
+          return newSections
+        })
+        setStaticSectionSections(prev => {
+          const newSections = prev.filter(section => section.id !== id)
+          console.log('New staticSectionSections:', newSections)
+          return newSections
+        })
+        setOpenSections(prev => {
+          const newSections = prev.filter(sectionId => sectionId !== id)
+          console.log('New openSections:', newSections)
+          return newSections
+        })
+      }
     }
   }, [])
 
@@ -538,6 +567,73 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
     }
   }
 
+  // Uppdatera availableOptionalSections för att inkludera både valfria och borttagna grundläggande sektioner
+  const availableOptionalSections = useMemo(() => {
+    // Hämta alla borttagna grundläggande sektioner
+    const removedBasicSections = basicSections.filter(id => !addedSections.includes(id))
+      .map(id => {
+        const section = staticSectionSections.find(s => s.id === id)
+        return section ? {
+          id: section.id,
+          title: section.title,
+          component: section.component,
+          isBasic: true
+        } : null
+      })
+      .filter(Boolean)
+
+    // Hämta alla tillgängliga valfria sektioner
+    const availableOptional = optionalSections.filter(
+      section => !addedSections.includes(section.id)
+    )
+
+    console.log('Available sections:', {
+      removedBasicSections,
+      availableOptional,
+      currentAddedSections: addedSections,
+      currentBasicSections: basicSections
+    })
+
+    return [...removedBasicSections, ...availableOptional]
+  }, [addedSections, basicSections, staticSectionSections, optionalSections])
+
+  const handleAddSection = (sectionId: string) => {
+    console.log('handleAddSection called with sectionId:', sectionId)
+    console.log('Current addedSections:', addedSections)
+    
+    if (!addedSections.includes(sectionId)) {
+      console.log('Section not already added, proceeding...')
+      
+      // Kolla om det är en grundläggande sektion
+      if (basicSections.includes(sectionId)) {
+        console.log('Restoring basic section:', sectionId)
+        setAddedSections(prev => [...prev, sectionId])
+        setStaticSectionSections(prev => 
+          prev.map(section => 
+            section.id === sectionId ? { ...section, hidden: false } : section
+          )
+        )
+      } else {
+        // Hantera valfri sektion
+        const sectionToAdd = optionalSections.find(section => section.id === sectionId)
+        if (sectionToAdd) {
+          console.log('Adding optional section:', sectionToAdd)
+          setStaticSectionSections(prev => [
+            ...prev,
+            {
+              id: sectionToAdd.id,
+              title: sectionToAdd.title,
+              component: sectionToAdd.component,
+              removable: true,
+              hidden: false
+            }
+          ])
+          setAddedSections(prev => [...prev, sectionId])
+        }
+      }
+    }
+  }
+
   return (
     <FormProvider {...form}>
       <div className="flex h-full">
@@ -582,8 +678,8 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
                               className="mr-1"
                             />
                             <ActionButton
-                              icon={section.hidden ? EyeOff : Eye}
-                              onClick={() => toggleSectionVisibility(section.id)}
+                              icon={Trash2}
+                              onClick={() => handleRemoveSection(section.id)}
                               className="mr-2"
                             />
                           </>
@@ -615,6 +711,15 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
                 </Collapsible>
               )
             })}
+
+            {/* Add Section button */}
+            <Button 
+              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 flex items-center justify-center gap-2" 
+              onClick={() => setShowAddSectionPopup(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Lägg till sektion
+            </Button>
 
             {/* Preview and Download buttons */}
             <div className="grid grid-cols-3 gap-2">
@@ -886,6 +991,57 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
       {showSignupPopup && (
         <SignupPopup onClose={() => setShowSignupPopup(false)} />
       )}
+
+      {/* Add Section Popup */}
+      <Dialog open={showAddSectionPopup} onOpenChange={setShowAddSectionPopup}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Lägg till sektion</DialogTitle>
+            <DialogDescription>
+              Välj vilka sektioner du vill lägga till i ditt CV
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-4">
+            {(() => {
+              console.log('Rendering popup sections:', {
+                availableOptionalSections: availableOptionalSections.map(s => s.id),
+                addedSections,
+                basicSections
+              })
+              return availableOptionalSections.map((section) => {
+                console.log('Rendering section button:', {
+                  sectionId: section.id,
+                  isInAddedSections: addedSections.includes(section.id),
+                  isInBasicSections: basicSections.includes(section.id)
+                })
+                return (
+                  <button
+                    key={section.id}
+                    className="flex items-center justify-between w-full px-4 py-2 text-left border rounded-md hover:bg-gray-50"
+                    onClick={() => {
+                      console.log('Section button clicked:', section.id)
+                      handleAddSection(section.id)
+                    }}
+                  >
+                    <span>{section.title}</span>
+                    {addedSections.includes(section.id) && (
+                      <Check className="h-4 w-4 text-green-500" />
+                    )}
+                  </button>
+                )
+              })
+            })()}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              console.log('Closing popup')
+              setShowAddSectionPopup(false)
+            }}>
+              Stäng
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </FormProvider>
   )
 }
