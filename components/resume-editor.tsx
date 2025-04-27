@@ -826,6 +826,8 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
                 hasChangedTemplate={false}
                 sectionOrder={addedSections}
                 sections={memoizedSections}
+                templates={templates}
+                onSelectTemplate={onSelectTemplate}
               />
             </div>
           </div>
@@ -990,6 +992,8 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
               hasChangedTemplate={false}
               sectionOrder={addedSections}
               sections={memoizedSections}
+              templates={templates}
+              onSelectTemplate={onSelectTemplate}
             />
             <div className="bg-white border-t w-full p-3.5">
               <div className="flex items-center justify-between px-2">

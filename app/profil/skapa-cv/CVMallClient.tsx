@@ -31,6 +31,33 @@ const isPasswordValid = (password: string): boolean => {
   return password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers && hasNonalphas
 }
 
+type FormValues = {
+  personalInfo: {
+    firstName: string
+    lastName: string
+    email: string
+    summary: string
+  }
+  workExperience: any[]
+  education: any[]
+  skills: any[]
+  languages: any[]
+  certifications: any[]
+  projects: any[]
+  references: any[]
+  password: string
+  sections: {
+    profile: any[]
+    courses: any[]
+    internship: any[]
+    references: any[]
+    traits: any[]
+    certificates: any[]
+    achievements: any[]
+    hobbies: any
+  }
+}
+
 export default function CVMallClient() {
   const searchParams = useSearchParams()
   const { user, signIn, signUp } = useAuth()
@@ -49,6 +76,8 @@ export default function CVMallClient() {
   const [lastLoadedId, setLastLoadedId] = useState<string | null>(null)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [isLoadingCV, setIsLoadingCV] = useState(false)
+  const hasLoadedData = useRef(false)
+  const editId = searchParams.get('edit')
 
   // Use react-hook-form
   const form = useForm({
@@ -67,6 +96,16 @@ export default function CVMallClient() {
       projects: [],
       references: [],
       password: "",
+      sections: {
+        profile: [],
+        courses: [],
+        internship: [],
+        references: [],
+        traits: [],
+        certificates: [],
+        achievements: [],
+        hobbies: {}
+      }
     },
   })
 
@@ -87,138 +126,143 @@ export default function CVMallClient() {
     'references'
   ])
 
-  // Add a ref to track if we've already loaded the data
-  const hasLoadedData = useRef(false)
-
-  const loadCVData = useCallback(async () => {
-    const editId = searchParams.get('edit')
-    if (!editId || !user || (editId === lastLoadedId && !isInitialLoad) || isLoadingCV) return
-
-    setIsLoadingCV(true)
-    setIsLoading(true)
-    try {
-      console.log("Loading CV data for ID:", editId)
-      const { data, error } = await supabase
-        .from('cvs')
-        .select('*')
-        .eq('id', editId)
-        .eq('user_id', user.id)
-        .single()
-
-      if (error) {
-        console.error("Error loading CV data:", error)
-        throw error
-      }
-
-      if (data?.data) {
-        console.log("Loaded CV data:", data)
-        console.log("Loaded CV data.data:", data.data)
-        
-        // Debug: Log sections data
-        console.log("Sections data from database:", data.data.sections)
-        
-        // Ensure we have all required fields in the loaded data
-        const loadedData = {
-          personalInfo: {
-            ...data.data.personalInfo,
-            title: data.data.personalInfo?.title || "",
-            firstName: data.data.personalInfo?.firstName || "",
-            lastName: data.data.personalInfo?.lastName || "",
-            email: data.data.personalInfo?.email || "",
-            phone: data.data.personalInfo?.phone || "",
-            location: data.data.personalInfo?.location || "",
-            summary: data.data.personalInfo?.summary || "",
-            photo: data.data.personalInfo?.photo || "",
-            address: data.data.personalInfo?.address || "",
-            postalCode: data.data.personalInfo?.postalCode || "",
-            optionalFields: data.data.personalInfo?.optionalFields || {}
-          },
-          workExperience: data.data.workExperience || data.data.experience || [],
-          education: data.data.education || [],
-          skills: data.data.skills || [],
-          languages: data.data.languages || [],
-          sections: {
-            profile: data.data.sections?.profile || [],
-            courses: data.data.sections?.courses || [],
-            internship: data.data.sections?.internship || [],
-            references: data.data.sections?.references || [],
-            traits: data.data.sections?.traits || [],
-            certificates: data.data.sections?.certificates || [],
-            achievements: data.data.sections?.achievements || [],
-            hobbies: data.data.sections?.hobbies || {}
-          }
-        }
-
-        // Debug: Log loaded sections
-        console.log("Loaded sections after initialization:", loadedData.sections)
-
-        // Check which sections have data and add them to the form
-        const sectionsWithData = Object.entries(loadedData.sections).filter(([key, value]) => {
-          console.log(`Checking section ${key}:`, value)
-          if (Array.isArray(value)) {
-            const hasData = value.length > 0
-            console.log(`Section ${key} is array, has data:`, hasData)
-            return hasData
-          } else if (typeof value === 'object') {
-            const hasData = Object.keys(value).length > 0
-            console.log(`Section ${key} is object, has data:`, hasData)
-            return hasData
-          }
-          return false
-        }).map(([key]) => key)
-
-        console.log("Sections with data:", sectionsWithData)
-
-        // Add sections with data to the form
-        if (sectionsWithData.length > 0) {
-          const currentValues = getValues()
-          console.log("Current form values:", currentValues)
-          
-          const updatedSections = {
-            ...currentValues.sections,
-            ...sectionsWithData.reduce((acc, section) => ({
-              ...acc,
-              [section]: loadedData.sections[section]
-            }), {})
-          }
-          
-          console.log("Updated sections:", updatedSections)
-          loadedData.sections = updatedSections
-        }
-
-        // Ensure workExperience is properly loaded
-        if (loadedData.workExperience && loadedData.workExperience.length > 0) {
-          console.log("Loading work experience data:", loadedData.workExperience)
-        }
-
-        console.log("Final loaded data before reset:", loadedData)
-        reset(loadedData)
-        setLastLoadedId(editId)
-        setIsInitialLoad(false)
-      }
-    } catch (error) {
-      console.error("Error in loadCVData:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load CV data. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoadingCV(false)
-      setIsLoading(false)
-    }
-  }, [user, searchParams, lastLoadedId, isInitialLoad, isLoadingCV, reset, getValues])
-
-  // Load CV data on mount and when dependencies change
+  // Load CV data only when editId or user changes
   useEffect(() => {
-    loadCVData()
-  }, [loadCVData])
+    const loadData = async () => {
+      if (!editId || !user || hasLoadedData.current || isLoadingCV) {
+        console.log("Skipping loadCVData:", { editId, user, hasLoadedData: hasLoadedData.current, isLoadingCV })
+        return
+      }
+
+      console.log("Starting to load CV data for ID:", editId)
+      setIsLoadingCV(true)
+      setIsLoading(true)
+      try {
+        const { data, error } = await supabase
+          .from('cvs')
+          .select('*')
+          .eq('id', editId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (error) {
+          console.error("Error loading CV data:", error)
+          throw error
+        }
+
+        if (data?.data) {
+          console.log("Successfully loaded CV data:", data)
+          console.log("Loaded CV data.data:", data.data)
+          
+          // Debug: Log sections data
+          console.log("Sections data from database:", data.data.sections)
+          
+          // Ensure we have all required fields in the loaded data
+          const loadedData = {
+            personalInfo: {
+              ...data.data.personalInfo,
+              title: data.data.personalInfo?.title || "",
+              firstName: data.data.personalInfo?.firstName || "",
+              lastName: data.data.personalInfo?.lastName || "",
+              email: data.data.personalInfo?.email || "",
+              phone: data.data.personalInfo?.phone || "",
+              location: data.data.personalInfo?.location || "",
+              summary: data.data.personalInfo?.summary || "",
+              photo: data.data.personalInfo?.photo || "",
+              address: data.data.personalInfo?.address || "",
+              postalCode: data.data.personalInfo?.postalCode || "",
+              optionalFields: data.data.personalInfo?.optionalFields || {}
+            },
+            workExperience: data.data.workExperience || data.data.experience || [],
+            education: data.data.education || [],
+            skills: data.data.skills || [],
+            languages: data.data.languages || [],
+            sections: {
+              profile: data.data.sections?.profile || [],
+              courses: data.data.sections?.courses || [],
+              internship: data.data.sections?.internship || [],
+              references: data.data.sections?.references || [],
+              traits: data.data.sections?.traits || [],
+              certificates: data.data.sections?.certificates || [],
+              achievements: data.data.sections?.achievements || [],
+              hobbies: data.data.sections?.hobbies || {}
+            }
+          }
+
+          // Debug: Log loaded sections
+          console.log("Loaded sections after initialization:", loadedData.sections)
+
+          // Check which sections have data and add them to the form
+          const sectionsWithData = Object.entries(loadedData.sections).filter(([key, value]) => {
+            console.log(`Checking section ${key}:`, value)
+            if (Array.isArray(value)) {
+              const hasData = value.length > 0
+              console.log(`Section ${key} is array, has data:`, hasData)
+              return hasData
+            } else if (typeof value === 'object') {
+              const hasData = Object.keys(value).length > 0
+              console.log(`Section ${key} is object, has data:`, hasData)
+              return hasData
+            }
+            return false
+          }).map(([key]) => key)
+
+          console.log("Sections with data:", sectionsWithData)
+
+          // Add sections with data to the form
+          if (sectionsWithData.length > 0) {
+            const currentValues = getValues()
+            console.log("Current form values:", currentValues)
+            
+            const updatedSections = {
+              ...currentValues.sections,
+              ...sectionsWithData.reduce((acc, section) => ({
+                ...acc,
+                [section]: loadedData.sections[section]
+              }), {})
+            }
+            
+            console.log("Updated sections:", updatedSections)
+            loadedData.sections = updatedSections
+          }
+
+          // Ensure workExperience is properly loaded
+          if (loadedData.workExperience && loadedData.workExperience.length > 0) {
+            console.log("Loading work experience data:", loadedData.workExperience)
+          }
+
+          console.log("Final loaded data before reset:", loadedData)
+          reset(loadedData)
+          hasLoadedData.current = true
+          setLastLoadedId(editId)
+          setIsInitialLoad(false)
+        }
+      } catch (error) {
+        console.error("Error in loadCVData:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load CV data. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoadingCV(false)
+        setIsLoading(false)
+      }
+    }
+
+    if (editId && user) {
+      console.log("Effect triggered:", { editId, user, hasLoadedData: hasLoadedData.current })
+      loadData()
+    }
+  }, [editId, user, isLoadingCV, reset, getValues])
 
   // Reset states when user changes
   useEffect(() => {
-    setLastLoadedId(null)
-    setIsInitialLoad(true)
-    setIsLoadingCV(false)
+    if (user) {
+      hasLoadedData.current = false
+      setLastLoadedId(null)
+      setIsInitialLoad(true)
+    }
   }, [user])
 
   useEffect(() => {
@@ -329,114 +373,136 @@ export default function CVMallClient() {
     }
   }
 
+  const saveCV = async () => {
+    const currentValues = getValues()
+    console.log("Form data to save:", currentValues)
+    
+    if (user) {
+      const cvData = {
+        user_id: user.id,
+        data: {
+          personalInfo: currentValues.personalInfo || {},
+          workExperience: currentValues.workExperience || [],
+          education: currentValues.education || [],
+          skills: currentValues.skills || [],
+          languages: currentValues.languages || [],
+          sections: currentValues.sections || {
+            profile: [],
+            courses: [],
+            internship: [],
+            references: [],
+            traits: [],
+            certificates: [],
+            achievements: [],
+            hobbies: {}
+          }
+        },
+        title: currentValues.personalInfo?.firstName || currentValues.personalInfo?.lastName 
+          ? `${currentValues.personalInfo.firstName || ''} ${currentValues.personalInfo.lastName || ''}'s CV`.trim()
+          : 'Untitled CV'
+      }
+      console.log("Saving CV data:", cvData)
+
+      const { data, error } = await supabase
+        .from('cvs')
+        .upsert([cvData], {
+          onConflict: 'user_id,title'
+        })
+        .select()
+
+      if (error) {
+        console.error("Error storing CV data:", {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        })
+        toast({
+          title: "Error",
+          description: `Failed to save CV data: ${error.message}`,
+          variant: "destructive",
+        })
+        throw error
+      } else {
+        console.log("CV data saved successfully:", data)
+        toast({
+          title: "Success",
+          description: "CV saved successfully.",
+        })
+      }
+    }
+  }
+
   const downloadPDF = async () => {
     setIsDownloading(true)
     try {
-      // Wait for the resume preview element to be available
-      const waitForElement = (selector: string, timeout = 5000) => {
-        return new Promise((resolve, reject) => {
-          const startTime = Date.now()
-          const checkElement = () => {
-            const element = document.getElementById(selector)
-            if (element) {
-              resolve(element)
-            } else if (Date.now() - startTime >= timeout) {
-              reject(new Error(`Element ${selector} not found after ${timeout}ms`))
-            } else {
-              setTimeout(checkElement, 100)
-            }
-          }
-          checkElement()
-        })
-      }
+      // Spara först CV:t innan nedladdning
+      await saveCV()
 
-      // Get the resume preview element
-      const resumePreview = await waitForElement("resume-preview")
+      const resumePreview = document.getElementById("resume-preview")
       if (!resumePreview) {
         throw new Error("Resume preview element not found")
       }
 
-      // Get the current form values using getValues()
-      const currentValues = getValues()
-      console.log("Form data to save:", currentValues)
-      
-      // Store CV data in Supabase
-      if (user) {
-        const cvData = {
-          user_id: user.id,
-          data: {
-            personalInfo: currentValues.personalInfo || {},
-            workExperience: currentValues.workExperience || [],
-            education: currentValues.education || [],
-            skills: currentValues.skills || [],
-            languages: currentValues.languages || [],
-            sections: currentValues.sections || {
-              profile: [],
-              courses: [],
-              internship: [],
-              references: [],
-              traits: [],
-              certificates: [],
-              achievements: [],
-              hobbies: {}
-            }
-          },
-          title: currentValues.personalInfo?.firstName || currentValues.personalInfo?.lastName 
-            ? `${currentValues.personalInfo.firstName || ''} ${currentValues.personalInfo.lastName || ''}'s CV`.trim()
-            : 'Untitled CV'
-        }
-        console.log("Saving CV data:", cvData)
+      // Vänta på att alla element ska laddas
+      await new Promise(resolve => setTimeout(resolve, 500))
 
-        const { data, error } = await supabase
-          .from('cvs')
-          .upsert([cvData], {
-            onConflict: 'user_id,title'
-          })
-          .select()
+      // Skapa en container för att fånga allt innehåll
+      const container = document.createElement('div')
+      container.style.position = 'absolute'
+      container.style.left = '-9999px'
+      container.style.top = '-9999px'
+      document.body.appendChild(container)
 
-        if (error) {
-          console.error("Error storing CV data:", {
-            message: error.message,
-            code: error.code,
-            details: error.details,
-            hint: error.hint
-          })
-          toast({
-            title: "Error",
-            description: `Failed to save CV data: ${error.message}`,
-            variant: "destructive",
-          })
-        } else {
-          console.log("CV data saved successfully:", data)
-          toast({
-            title: "Success",
-            description: "CV saved successfully.",
-          })
-        }
-      }
+      // Klona hela preview-elementet
+      const clone = resumePreview.cloneNode(true) as HTMLElement
+      container.appendChild(clone)
 
-      // Convert the resume preview to a canvas
-      const canvas = await html2canvas(resumePreview as HTMLElement, {
-        scale: 2, // Higher scale for better quality
+      // Sätt explicit stilar för att säkerställa korrekt rendering
+      clone.style.width = '210mm'
+      clone.style.height = 'auto'
+      clone.style.overflow = 'visible'
+      clone.style.backgroundColor = '#FFFFFF'
+
+      const canvas = await html2canvas(clone, {
+        scale: 2,
         useCORS: true,
         logging: false,
+        allowTaint: true,
+        backgroundColor: '#FFFFFF',
+        windowWidth: 210 * 3.78, // Konvertera mm till pixlar
+        windowHeight: clone.scrollHeight
       })
 
-      // Create a PDF
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: "a4",
       })
 
-      // Add the canvas to the PDF
       const imgData = canvas.toDataURL("image/png")
       const pdfWidth = pdf.internal.pageSize.getWidth()
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight)
 
-      // Download the PDF
+      // Beräkna antalet sidor som behövs
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const totalPages = Math.ceil(pdfHeight / pageHeight)
+
+      // Lägg till innehållet på varje sida
+      for (let i = 0; i < totalPages; i++) {
+        if (i > 0) {
+          pdf.addPage()
+        }
+        
+        const position = -i * pageHeight
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight)
+      }
+
+      // Spara PDF:en
       pdf.save("resume.pdf")
+
+      // Städa upp
+      document.body.removeChild(container)
     } catch (error) {
       console.error("Error generating PDF:", error)
       toast({

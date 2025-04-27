@@ -512,11 +512,20 @@ export function DefaultTemplate({
       {/* Vertical line */}
       <div
         className="absolute top-0 bottom-0 left-2/3 w-px bg-gray-300"
-        style={{ top: headerHeight, height: `calc(100% - ${headerHeight})` }}
+        style={{ 
+          top: headerHeight, 
+          height: `calc(100% - ${headerHeight})`,
+          pointerEvents: 'none'
+        }}
       ></div>
 
       {/* Main content */}
-      <div className="flex relative" style={{ paddingTop: headerHeight, minHeight: `calc(297mm - ${headerHeight})` }}>
+      <div className="flex relative" style={{ 
+        paddingTop: headerHeight, 
+        minHeight: `calc(297mm - ${headerHeight})`,
+        position: 'relative',
+        zIndex: 1
+      }}>
         {/* Left column */}
         <div className="w-8/12 p-8 overflow-hidden">
           {sectionOrder.map((sectionId) => {
