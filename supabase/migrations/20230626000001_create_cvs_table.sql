@@ -60,4 +60,4 @@ DROP TRIGGER IF EXISTS update_cvs_updated_at ON cvs;
 CREATE TRIGGER update_cvs_updated_at
 BEFORE UPDATE ON cvs
 FOR EACH ROW
-EXECUTE FUNCTION update_updated_at_column(); 
+EXECUTE FUNCTION update_updated_at_column();

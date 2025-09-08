@@ -19,4 +19,4 @@ export function Section({ children, className = "", background = "white" }: Sect
       <div className="container mx-auto px-4">{children}</div>
     </section>
   )
-} 
+}

@@ -28,4 +28,4 @@ export const theme = {
       default: 'bg-white p-6 rounded-lg shadow-md',
     },
   },
-} as const 
+} as const

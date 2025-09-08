@@ -30,4 +30,4 @@ export function CVTemplateCard({ imageSrc, alt, templateName, templateId }: CVTe
       </Link>
     </div>
   )
-} 
+}

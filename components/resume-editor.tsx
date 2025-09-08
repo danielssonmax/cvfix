@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useCallback, useEffect, useRef, useState, useMemo } from "react"
-import { useForm, FormProvider, useWatch } from "react-hook-form"
+import { type useForm, FormProvider, useWatch } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import { ResumePreview } from "@/components/resume-preview"
 import {
@@ -10,13 +10,12 @@ import {
   ArrowDown,
   LayoutIcon,
   Type,
-  TextIcon as TextSize,
+  TextSelect as TextSize,
   Palette,
   ChevronDown,
   Check,
   ChevronUp,
   Eye,
-  EyeOff,
   Save,
   Download,
   Plus,
@@ -37,13 +36,22 @@ import { Traits } from "@/components/resume-sections/Traits"
 import { Certificates } from "@/components/resume-sections/Certificates"
 import { Achievements } from "@/components/resume-sections/Achievements"
 import { templates } from "@/components/templates"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/AuthContext"
 import { toast } from "@/components/ui/use-toast"
 import { supabase } from "@/lib/supabase"
 import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
+import CapturePayment from "@/components/capture-payment" // Default export
+import { SignupPopup } from "@/components/signup-popup" // Named export
 
 interface FormData {
   personalInfo: {
@@ -150,7 +158,7 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
     { id: "education", title: "Utbildning", component: Education, removable: true, hidden: false },
     { id: "experience", title: "Arbetslivserfarenhet", component: Experience, removable: true, hidden: false },
     { id: "skills", title: "Färdigheter", component: Skills, removable: true, hidden: false },
-    { id: "languages", title: "Språk", component: Languages, removable: true, hidden: false }
+    { id: "languages", title: "Språk", component: Languages, removable: true, hidden: false },
   ])
 
   const fontSizeDropdownRef = useRef<HTMLDivElement>(null)
@@ -164,7 +172,7 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
     { id: "certificates", title: "Certifikat", component: Certificates },
     { id: "achievements", title: "Prestationer", component: Achievements },
     { id: "profile", title: "Profil", component: Profile },
-    { id: "references", title: "Referenser", component: References }
+    { id: "references", title: "Referenser", component: References },
   ]
 
   useEffect(() => {
@@ -252,40 +260,38 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
   }
 
   const handleRemoveSection = useCallback((id: string) => {
-    console.log('handleRemoveSection called with id:', id)
-    console.log('Current addedSections:', addedSections)
-    console.log('Is basic section?', basicSections.includes(id))
-    
+    console.log("handleRemoveSection called with id:", id)
+    console.log("Current addedSections:", addedSections)
+    console.log("Is basic section?", basicSections.includes(id))
+
     if (id !== "personalInfo") {
       if (basicSections.includes(id)) {
-        console.log('Removing basic section:', id)
-        setAddedSections(prev => {
-          const newSections = prev.filter(sectionId => sectionId !== id)
-          console.log('New addedSections after removing basic:', newSections)
+        console.log("Removing basic section:", id)
+        setAddedSections((prev) => {
+          const newSections = prev.filter((sectionId) => sectionId !== id)
+          console.log("New addedSections after removing basic:", newSections)
           return newSections
         })
-        setStaticSectionSections(prev => {
-          const newSections = prev.map(section => 
-            section.id === id ? { ...section, hidden: true } : section
-          )
-          console.log('Updated staticSectionSections:', newSections)
+        setStaticSectionSections((prev) => {
+          const newSections = prev.map((section) => (section.id === id ? { ...section, hidden: true } : section))
+          console.log("Updated staticSectionSections:", newSections)
           return newSections
         })
       } else {
-        console.log('Removing optional section:', id)
-        setAddedSections(prev => {
-          const newSections = prev.filter(sectionId => sectionId !== id)
-          console.log('New addedSections after removing optional:', newSections)
+        console.log("Removing optional section:", id)
+        setAddedSections((prev) => {
+          const newSections = prev.filter((sectionId) => sectionId !== id)
+          console.log("New addedSections after removing optional:", newSections)
           return newSections
         })
-        setStaticSectionSections(prev => {
-          const newSections = prev.filter(section => section.id !== id)
-          console.log('New staticSectionSections:', newSections)
+        setStaticSectionSections((prev) => {
+          const newSections = prev.filter((section) => section.id !== id)
+          console.log("New staticSectionSections:", newSections)
           return newSections
         })
-        setOpenSections(prev => {
-          const newSections = prev.filter(sectionId => sectionId !== id)
-          console.log('New openSections:', newSections)
+        setOpenSections((prev) => {
+          const newSections = prev.filter((sectionId) => sectionId !== id)
+          console.log("New openSections:", newSections)
           return newSections
         })
       }
@@ -364,11 +370,11 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
         ...Object.entries(formData.sections || {}).reduce((acc, [key, value]) => {
           if (Array.isArray(value) && value.length > 0) {
             acc[key] = value
-          } else if (typeof value === 'object' && Object.keys(value).length > 0) {
+          } else if (typeof value === "object" && Object.keys(value).length > 0) {
             acc[key] = value
           }
           return acc
-        }, {})
+        }, {}),
       },
     }),
     [formData],
@@ -398,16 +404,16 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
 
   const [showPreview, setShowPreview] = useState(false)
 
-  const ActionButton = ({ 
-    icon: Icon, 
-    onClick, 
+  const ActionButton = ({
+    icon: Icon,
+    onClick,
     disabled = false,
-    className = ""
-  }: { 
-    icon: React.ElementType;
-    onClick: (e: React.MouseEvent) => void;
-    disabled?: boolean;
-    className?: string;
+    className = "",
+  }: {
+    icon: React.ElementType
+    onClick: (e: React.MouseEvent) => void
+    disabled?: boolean
+    className?: string
   }) => (
     <div
       onClick={(e) => {
@@ -417,12 +423,12 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
       className={cn(
         "inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 cursor-pointer",
         disabled && "opacity-50 cursor-not-allowed hover:bg-transparent hover:text-gray-400",
-        className
+        className,
       )}
     >
       <Icon className="h-4 w-4" />
     </div>
-  );
+  )
 
   const handleSaveClick = () => {
     if (user) {
@@ -452,11 +458,11 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
 
       // Filtrera bort tomma objekt från grundläggande sektioner
       const filterEmptyObjects = (array: any[]) => {
-        return array.filter(item => {
+        return array.filter((item) => {
           // Kontrollera om objektet har några icke-tomma värden
-          return Object.values(item).some(value => {
-            if (typeof value === 'string') return value.trim() !== ''
-            if (typeof value === 'boolean') return true
+          return Object.values(item).some((value) => {
+            if (typeof value === "string") return value.trim() !== ""
+            if (typeof value === "boolean") return true
             return value !== null && value !== undefined
           })
         })
@@ -465,9 +471,10 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
       // Hantera grundläggande sektioner baserat på addedSections
       const cvData = {
         user_id: user?.id,
-        title: currentValues.personalInfo?.firstName || currentValues.personalInfo?.lastName 
-          ? `${currentValues.personalInfo.firstName || ''} ${currentValues.personalInfo.lastName || ''}'s CV`.trim()
-          : 'Untitled CV',
+        title:
+          currentValues.personalInfo?.firstName || currentValues.personalInfo?.lastName
+            ? `${currentValues.personalInfo.firstName || ""} ${currentValues.personalInfo.lastName || ""}'s CV`.trim()
+            : "Untitled CV",
         data: {
           personalInfo: {
             ...currentValues.personalInfo,
@@ -484,20 +491,22 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
             optionalFields: currentValues.personalInfo.optionalFields || {},
           },
           // Spara bara data för sektioner som finns i addedSections
-          workExperience: addedSections.includes('experience') ? filterEmptyObjects(currentValues.workExperience || []) : [],
-          education: addedSections.includes('education') ? filterEmptyObjects(currentValues.education || []) : [],
-          skills: addedSections.includes('skills') ? filterEmptyObjects(currentValues.skills || []) : [],
-          languages: addedSections.includes('languages') ? filterEmptyObjects(currentValues.languages || []) : [],
+          workExperience: addedSections.includes("experience")
+            ? filterEmptyObjects(currentValues.workExperience || [])
+            : [],
+          education: addedSections.includes("education") ? filterEmptyObjects(currentValues.education || []) : [],
+          skills: addedSections.includes("skills") ? filterEmptyObjects(currentValues.skills || []) : [],
+          languages: addedSections.includes("languages") ? filterEmptyObjects(currentValues.languages || []) : [],
           sections: updatedSections,
-        }
+        },
       }
 
       console.log("Saving CV data:", cvData)
 
       const { data, error } = await supabase
-        .from('cvs')
+        .from("cvs")
         .upsert([cvData], {
-          onConflict: 'user_id,title'
+          onConflict: "user_id,title",
         })
         .select()
 
@@ -553,14 +562,14 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
       }
 
       // Vänta på att alla element ska laddas
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await new Promise((resolve) => setTimeout(resolve, 500))
 
       const canvas = await html2canvas(resumePreview as HTMLElement, {
         scale: 2,
         useCORS: true,
         logging: false,
         allowTaint: true,
-        backgroundColor: '#FFFFFF'
+        backgroundColor: "#FFFFFF",
       })
 
       const pdf = new jsPDF({
@@ -591,22 +600,23 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
   // Uppdatera availableOptionalSections för att inkludera både valfria och borttagna grundläggande sektioner
   const availableOptionalSections = useMemo(() => {
     // Hämta alla borttagna grundläggande sektioner
-    const removedBasicSections = basicSections.filter(id => !addedSections.includes(id))
-      .map(id => {
-        const section = staticSectionSections.find(s => s.id === id)
-        return section ? {
-          id: section.id,
-          title: section.title,
-          component: section.component,
-          isBasic: true
-        } : null
+    const removedBasicSections = basicSections
+      .filter((id) => !addedSections.includes(id))
+      .map((id) => {
+        const section = staticSectionSections.find((s) => s.id === id)
+        return section
+          ? {
+              id: section.id,
+              title: section.title,
+              component: section.component,
+              isBasic: true,
+            }
+          : null
       })
       .filter(Boolean)
 
     // Hämta alla tillgängliga valfria sektioner
-    const availableOptional = optionalSections.filter(
-      section => !addedSections.includes(section.id)
-    )
+    const availableOptional = optionalSections.filter((section) => !addedSections.includes(section.id))
 
     // Lägg till sektioner som har data men inte är tillagda
     const sectionsWithData = Object.entries(formData.sections || {})
@@ -617,24 +627,26 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
         }
         if (Array.isArray(value)) {
           return value.length > 0
-        } else if (typeof value === 'object') {
+        } else if (typeof value === "object") {
           return Object.keys(value).length > 0
         }
         return false
       })
       .map(([key]) => {
-        const section = optionalSections.find(s => s.id === key)
-        return section ? {
-          id: section.id,
-          title: section.title,
-          component: section.component,
-          hasData: true
-        } : null
+        const section = optionalSections.find((s) => s.id === key)
+        return section
+          ? {
+              id: section.id,
+              title: section.title,
+              component: section.component,
+              hasData: true,
+            }
+          : null
       })
       .filter(Boolean)
 
     return [...removedBasicSections, ...availableOptional, ...sectionsWithData]
-  }, [addedSections, basicSections, staticSectionSections, optionalSections, formData.sections])
+  }, [addedSections, basicSections, staticSectionSections, formData.sections]) // Removed optionalSections from dependencies
 
   useEffect(() => {
     // Automatically add sections that have data
@@ -642,14 +654,14 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
       .filter(([key, value]) => {
         if (Array.isArray(value)) {
           return value.length > 0
-        } else if (typeof value === 'object') {
+        } else if (typeof value === "object") {
           return Object.keys(value).length > 0
         }
         return false
       })
       .map(([key]) => key)
 
-    sectionsWithData.forEach(sectionId => {
+    sectionsWithData.forEach((sectionId) => {
       if (!addedSections.includes(sectionId)) {
         handleAddSection(sectionId)
       }
@@ -657,37 +669,35 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
   }, [formData.sections])
 
   const handleAddSection = (sectionId: string) => {
-    console.log('handleAddSection called with sectionId:', sectionId)
-    console.log('Current addedSections:', addedSections)
-    
+    console.log("handleAddSection called with sectionId:", sectionId)
+    console.log("Current addedSections:", addedSections)
+
     if (!addedSections.includes(sectionId)) {
-      console.log('Section not already added, proceeding...')
-      
+      console.log("Section not already added, proceeding...")
+
       // Kolla om det är en grundläggande sektion
       if (basicSections.includes(sectionId)) {
-        console.log('Restoring basic section:', sectionId)
-        setAddedSections(prev => [...prev, sectionId])
-        setStaticSectionSections(prev => 
-          prev.map(section => 
-            section.id === sectionId ? { ...section, hidden: false } : section
-          )
+        console.log("Restoring basic section:", sectionId)
+        setAddedSections((prev) => [...prev, sectionId])
+        setStaticSectionSections((prev) =>
+          prev.map((section) => (section.id === sectionId ? { ...section, hidden: false } : section)),
         )
       } else {
         // Hantera valfri sektion
-        const sectionToAdd = optionalSections.find(section => section.id === sectionId)
+        const sectionToAdd = optionalSections.find((section) => section.id === sectionId)
         if (sectionToAdd) {
-          console.log('Adding optional section:', sectionToAdd)
-          setStaticSectionSections(prev => [
+          console.log("Adding optional section:", sectionToAdd)
+          setStaticSectionSections((prev) => [
             ...prev,
             {
               id: sectionToAdd.id,
               title: sectionToAdd.title,
               component: sectionToAdd.component,
               removable: true,
-              hidden: false
-            }
+              hidden: false,
+            },
           ])
-          setAddedSections(prev => [...prev, sectionId])
+          setAddedSections((prev) => [...prev, sectionId])
         }
       }
     }
@@ -772,8 +782,8 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
             })}
 
             {/* Add Section button */}
-            <Button 
-              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 flex items-center justify-center gap-2" 
+            <Button
+              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 flex items-center justify-center gap-2"
               onClick={() => setShowAddSectionPopup(true)}
             >
               <Plus className="h-4 w-4" />
@@ -782,20 +792,23 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
 
             {/* Preview and Download buttons */}
             <div className="grid grid-cols-3 gap-2">
-              <Button className="w-full bg-black hover:bg-[#00a857] text-white flex items-center justify-center gap-2" onClick={() => setShowPreview(true)}>
+              <Button
+                className="w-full bg-black hover:bg-[#00a857] text-white flex items-center justify-center gap-2"
+                onClick={() => setShowPreview(true)}
+              >
                 <Eye className="h-4 w-4" />
                 Förhandsgranska
               </Button>
-              <Button 
-                className="w-full bg-[#00bf63] hover:bg-[#00a857] text-white flex items-center justify-center gap-2" 
+              <Button
+                className="w-full bg-[#00bf63] hover:bg-[#00a857] text-white flex items-center justify-center gap-2"
                 onClick={handleSaveClick}
                 disabled={isSaving}
               >
                 <Save className="h-4 w-4" />
                 {isSaving ? "Sparar..." : "Spara"}
               </Button>
-              <Button 
-                className="w-full bg-[#00bf63] hover:bg-[#00a857] text-white flex items-center justify-center gap-2" 
+              <Button
+                className="w-full bg-[#00bf63] hover:bg-[#00a857] text-white flex items-center justify-center gap-2"
                 onClick={handleDownloadClick}
                 disabled={isDownloading}
               >
@@ -1048,27 +1061,19 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
       <DownloadPopup isOpen={isDownloadPopupOpen} onClose={() => setIsDownloadPopupOpen(false)} />
 
       {/* Add payment and signup popups */}
-      {showCapturePayment && (
-        <CapturePayment onClose={() => setShowCapturePayment(false)} />
-      )}
-      {showSignupPopup && (
-        <SignupPopup onClose={() => setShowSignupPopup(false)} />
-      )}
+      {showCapturePayment && <CapturePayment onClose={() => setShowCapturePayment(false)} />}
+      {showSignupPopup && <SignupPopup onClose={() => setShowSignupPopup(false)} />}
 
       {/* Add Section Popup */}
       <Dialog open={showAddSectionPopup} onOpenChange={setShowAddSectionPopup}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Lägg till sektion</DialogTitle>
-            <DialogDescription>
-              Välj vilka sektioner du vill lägga till i ditt CV
-            </DialogDescription>
+            <DialogDescription>Välj vilka sektioner du vill lägga till i ditt CV</DialogDescription>
           </DialogHeader>
           <div className="grid gap-2 py-4">
             {(() => {
-              
               return availableOptionalSections.map((section) => {
-            
                 return (
                   <button
                     key={section.id}
@@ -1078,18 +1083,19 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
                     }}
                   >
                     <span>{section.title}</span>
-                    {addedSections.includes(section.id) && (
-                      <Check className="h-4 w-4 text-green-500" />
-                    )}
+                    {addedSections.includes(section.id) && <Check className="h-4 w-4 text-green-500" />}
                   </button>
                 )
               })
             })()}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowAddSectionPopup(false)
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowAddSectionPopup(false)
+              }}
+            >
               Stäng
             </Button>
           </DialogFooter>
@@ -1099,4 +1105,5 @@ const ResumeEditor: React.FC<ResumeEditorProps> = ({ selectedTemplate, onSelectT
   )
 }
 
+export { ResumeEditor }
 export default ResumeEditor

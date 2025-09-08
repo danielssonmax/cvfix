@@ -26,4 +26,4 @@ export function FAQ({ items }: FAQProps) {
       ))}
     </div>
   )
-} 
+}
