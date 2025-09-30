@@ -6,6 +6,9 @@ import Link from "next/link"
 export const metadata = {
   title: "Karriärtips | CVfixaren.se",
   description: "Få värdefulla karriärtips och råd för att lyckas i din jobbsökning och professionella utveckling.",
+  alternates: {
+    canonical: "https://cvfixaren.se/karriartips",
+  },
 }
 
 export default function KarriarTipsPage() {

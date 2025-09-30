@@ -294,6 +294,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${post.title} | CVfixaren.se`,
     description: post.excerpt,
+    alternates: {
+      canonical: `https://cvfixaren.se/blogg/${params.slug}`,
+    },
     openGraph: {
       title: post.title,
       description: post.excerpt,

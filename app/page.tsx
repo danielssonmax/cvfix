@@ -17,46 +17,63 @@ const roboto = Roboto({
 const faqItems = [
   {
     question: "Hur långt bör mitt CV vara?",
-    answer: "Ett CV bör vanligtvis vara 1-2 sidor långt. För nyutexaminerade eller de med mindre erfarenhet räcker ofta en sida, medan mer erfarna kandidater kan behöva två sidor för att presentera all relevant information."
+    answer:
+      "Ett CV bör vanligtvis vara 1-2 sidor långt. För nyutexaminerade eller de med mindre erfarenhet räcker ofta en sida, medan mer erfarna kandidater kan behöva två sidor för att presentera all relevant information.",
   },
   {
     question: "Ska jag inkludera ett foto på mitt CV?",
-    answer: "I Sverige är det inte standard att inkludera ett foto på CV:t. Det är oftast bättre att fokusera på dina kvalifikationer och erfarenheter. Om en arbetsgivare specifikt ber om ett foto kan du inkludera det."
+    answer:
+      "I Sverige är det inte standard att inkludera ett foto på CV:t. Det är oftast bättre att fokusera på dina kvalifikationer och erfarenheter. Om en arbetsgivare specifikt ber om ett foto kan du inkludera det.",
   },
   {
     question: "I vilken ordning ska jag lista min arbetslivserfarenhet?",
-    answer: "Det är vanligast att lista arbetslivserfarenhet i omvänd kronologisk ordning, med den senaste erfarenheten först. Detta ger arbetsgivaren en tydlig bild av din senaste och mest relevanta erfarenhet."
+    answer:
+      "Det är vanligast att lista arbetslivserfarenhet i omvänd kronologisk ordning, med den senaste erfarenheten först. Detta ger arbetsgivaren en tydlig bild av din senaste och mest relevanta erfarenhet.",
   },
   {
     question: "Hur anpassar jag mitt CV för olika jobb?",
-    answer: "Anpassa ditt CV genom att lyfta fram de färdigheter och erfarenheter som är mest relevanta för den specifika tjänsten. Läs jobbannonsen noga och använd liknande nyckelord i ditt CV för att visa hur du matchar kraven."
+    answer:
+      "Anpassa ditt CV genom att lyfta fram de färdigheter och erfarenheter som är mest relevanta för den specifika tjänsten. Läs jobbannonsen noga och använd liknande nyckelord i ditt CV för att visa hur du matchar kraven.",
   },
   {
     question: "Bör jag inkludera referenser i mitt CV?",
-    answer: "Det är inte nödvändigt att inkludera referenser direkt i CV:t. Istället kan du skriva 'Referenser lämnas på begäran' i slutet av ditt CV. Ha dock en separat lista med referenser redo om arbetsgivaren ber om den."
-  }
+    answer:
+      "Det är inte nödvändigt att inkludera referenser direkt i CV:t. Istället kan du skriva 'Referenser lämnas på begäran' i slutet av ditt CV. Ha dock en separat lista med referenser redo om arbetsgivaren ber om den.",
+  },
 ]
 
 const cvTemplates = [
   {
     id: "elegant",
     name: "Elegant",
-    imageSrc: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/elegant%20preview%20lila-4oQxxFwA3ufQe4fOQ41tZnZdnSPPmt.png",
-    alt: "Elegant CV mall"
+    imageSrc:
+      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/elegant%20preview%20lila-4oQxxFwA3ufQe4fOQ41tZnZdnSPPmt.png",
+    alt: "Elegant CV mall",
   },
   {
     id: "lyxig",
     name: "Lyxig",
-    imageSrc: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/lyxig%20preview%20svart-QDhvZHVFvTYWMCJcPak5CTCCcfSRyK.png",
-    alt: "Lyxig CV mall"
+    imageSrc:
+      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/lyxig%20preview%20svart-QDhvZHVFvTYWMCJcPak5CTCCcfSRyK.png",
+    alt: "Lyxig CV mall",
   },
   {
     id: "standard",
     name: "Standard",
-    imageSrc: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/standard%20preview-VSOYHTSzrlcj4bav3G6uSO8mLKamNL.png",
-    alt: "Standard CV mall"
-  }
+    imageSrc:
+      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/standard%20preview-VSOYHTSzrlcj4bav3G6uSO8mLKamNL.png",
+    alt: "Standard CV mall",
+  },
 ]
+
+export const metadata = {
+  title: "CVfixaren.se - Skapa professionella CV på minuter",
+  description:
+    "Använd våra expertgranskade CV-mallar som följer arbetsgivarnas önskemål. Enkelt, snabbt och professionellt - skapa ditt CV på minuter. Börja gratis idag!",
+  alternates: {
+    canonical: "https://cvfixaren.se",
+  },
+}
 
 export default function HomePage() {
   return (

@@ -8,6 +8,9 @@ import Link from "next/link"
 export const metadata = {
   title: "Samarbetspartners | CVfixaren.se",
   description: "Lär känna våra samarbetspartners som vi rekommenderar. Upptäck kvalitetstjänster inom olika branscher.",
+  alternates: {
+    canonical: "https://cvfixaren.se/samarbetspartners",
+  },
 }
 
 const partners = [

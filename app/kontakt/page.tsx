@@ -10,6 +10,9 @@ export const metadata = {
   title: "Kontakta oss | CVfixaren.se",
   description:
     "Har du frågor eller feedback? Kontakta oss på CVfixaren.se. Vi är här för att hjälpa dig med ditt CV-skapande.",
+  alternates: {
+    canonical: "https://cvfixaren.se/kontakt",
+  },
 }
 
 export default function KontaktPage() {

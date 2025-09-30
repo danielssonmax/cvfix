@@ -7,6 +7,9 @@ export const metadata = {
   title: "Intervjuguide | CVfixaren.se",
   description:
     "Förbered dig för din nästa jobbintervju med vår omfattande guide. Få tips, vanliga frågor och strategier för att göra ett starkt intryck.",
+  alternates: {
+    canonical: "https://cvfixaren.se/intervjuguide",
+  },
 }
 
 export default function IntervjuguidePage() {

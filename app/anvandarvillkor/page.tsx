@@ -6,6 +6,9 @@ export const metadata = {
   title: "Användarvillkor | CVfixaren.se",
   description:
     "Läs våra användarvillkor för att förstå dina rättigheter och skyldigheter när du använder CVfixaren.se.",
+  alternates: {
+    canonical: "https://cvfixaren.se/anvandarvillkor",
+  },
 }
 
 export default function AnvandarvillkorPage() {

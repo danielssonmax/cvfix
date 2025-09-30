@@ -10,6 +10,9 @@ export const metadata: Metadata = {
   title: "Karriärblogg | CVfixaren.se",
   description:
     "Tips och råd för att skapa det perfekta CV:t, karriärutveckling och jobbsökande från CVfixaren.se experter.",
+  alternates: {
+    canonical: "https://cvfixaren.se/blogg",
+  },
   openGraph: {
     title: "Karriärblogg | CVfixaren.se",
     description: "Tips och råd för att skapa det perfekta CV:t, karriärutveckling och jobbsökande.",

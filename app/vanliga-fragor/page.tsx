@@ -7,6 +7,9 @@ export const metadata = {
   title: "Vanliga frågor | CVfixaren.se",
   description:
     "Hitta svar på de vanligaste frågorna om hur du använder CVfixaren.se för att skapa ditt professionella CV.",
+  alternates: {
+    canonical: "https://cvfixaren.se/vanliga-fragor",
+  },
 }
 
 export default function VanligaFragorPage() {

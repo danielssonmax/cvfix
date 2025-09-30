@@ -71,4 +71,7 @@ export default function CVTemplatesPage() {
 export const metadata = {
   title: "CV-mallar | CVfixaren",
   description: "Utforska våra professionella CV-mallar och skapa ditt perfekta CV med CVfixaren.",
+  alternates: {
+    canonical: "https://cvfixaren.se/cv-mallar",
+  },
 }
