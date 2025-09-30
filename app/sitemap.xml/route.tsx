@@ -14,6 +14,16 @@ function generateSiteMap() {
     "/kontakt",
     "/karriartips",
     "/intervjuguide",
+    "/samarbetspartners",
+  ]
+
+  const blogPosts = [
+    "sa-skriver-du-ett-cv-som-sticker-ut",
+    "5-vanliga-misstag-att-undvika",
+    "personligt-brev-guide",
+    "linkedin-profil-optimering",
+    "arbetsintervju-fragor-och-svar",
+    "ai-och-framtidens-cv",
   ]
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
@@ -26,6 +36,18 @@ function generateSiteMap() {
               <lastmod>${new Date().toISOString()}</lastmod>
               <changefreq>weekly</changefreq>
               <priority>${page === "" ? "1.0" : "0.8"}</priority>
+            </url>
+          `
+        })
+        .join("")}
+      ${blogPosts
+        .map((slug) => {
+          return `
+            <url>
+              <loc>${baseUrl}/blogg/${slug}</loc>
+              <lastmod>${new Date().toISOString()}</lastmod>
+              <changefreq>monthly</changefreq>
+              <priority>0.7</priority>
             </url>
           `
         })
